@@ -1,51 +1,19 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import { invoke } from '@tauri-apps/api/core'
 import { Button } from '@/components/ui/button'
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState('')
-  const [name, setName] = useState('')
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke('greet', { name }))
-  }
+  const [started, setStarted] = useState(false)
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault()
-          greet()
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-
-      <Button>Click me</Button>
+    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
+      <section className="flex flex-1 flex-col items-center justify-center gap-6 overflow-hidden bg-background px-4 py-6 sm:gap-7 sm:px-6 sm:py-8 md:gap-8 md:py-10">
+        <h1 className="text-5xl leading-none font-medium tracking-normal text-foreground sm:text-6xl md:text-7xl">
+          swimmeret
+        </h1>
+        <Button variant="default" size="lg" onClick={() => setStarted(true)}>
+          {started ? '准备好了' : '开始使用'}
+        </Button>
+      </section>
     </main>
   )
 }
