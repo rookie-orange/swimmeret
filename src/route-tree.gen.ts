@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as authLoginRouteRouteImport } from './routes/(auth)/login/route'
 import { Route as AuthenticatedIndexRouteRouteImport } from './routes/_authenticated/index/route'
 import { Route as AuthenticatedHistoryRouteRouteImport } from './routes/_authenticated/history/route'
+import { Route as AuthenticatedImageEditorRouteRouteImport } from './routes/_authenticated/image-editor/route'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
 import { Route as errorsErrorsStatusRouteRouteImport } from './routes/(errors)/errors/$status/route'
 import { Route as errorsErrors401RouteRouteImport } from './routes/(errors)/errors/401/route'
@@ -48,6 +49,12 @@ const AuthenticatedHistoryRouteRoute =
   AuthenticatedHistoryRouteRouteImport.update({
     id: '/history',
     path: '/history',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedImageEditorRouteRoute =
+  AuthenticatedImageEditorRouteRouteImport.update({
+    id: '/image-editor',
+    path: '/image-editor',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSettingsRouteRoute =
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRouteRoute
   '/login': typeof authLoginRouteRoute
   '/history': typeof AuthenticatedHistoryRouteRoute
+  '/image-editor': typeof AuthenticatedImageEditorRouteRoute
   '/settings': typeof AuthenticatedSettingsRouteRoute
   '/errors/$status': typeof errorsErrorsStatusRouteRoute
   '/errors/401': typeof errorsErrors401RouteRoute
@@ -97,6 +105,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRouteRoute
   '/login': typeof authLoginRouteRoute
   '/history': typeof AuthenticatedHistoryRouteRoute
+  '/image-editor': typeof AuthenticatedImageEditorRouteRoute
   '/settings': typeof AuthenticatedSettingsRouteRoute
   '/errors/$status': typeof errorsErrorsStatusRouteRoute
   '/errors/401': typeof errorsErrors401RouteRoute
@@ -112,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRouteRoute
   '/(auth)/login': typeof authLoginRouteRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRouteRoute
+  '/_authenticated/image-editor': typeof AuthenticatedImageEditorRouteRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
   '/(errors)/errors/$status': typeof errorsErrorsStatusRouteRoute
   '/(errors)/errors/401': typeof errorsErrors401RouteRoute
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/history'
+    | '/image-editor'
     | '/settings'
     | '/errors/$status'
     | '/errors/401'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/history'
+    | '/image-editor'
     | '/settings'
     | '/errors/$status'
     | '/errors/401'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/(auth)/login'
     | '/_authenticated/history'
+    | '/_authenticated/image-editor'
     | '/_authenticated/settings'
     | '/(errors)/errors/$status'
     | '/(errors)/errors/401'
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof AuthenticatedHistoryRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/image-editor': {
+      id: '/_authenticated/image-editor'
+      path: '/image-editor'
+      fullPath: '/image-editor'
+      preLoaderRoute: typeof AuthenticatedImageEditorRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings': {
@@ -288,12 +308,14 @@ const errorsRouteRouteWithChildren = errorsRouteRoute._addFileChildren(
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRouteRoute: typeof AuthenticatedIndexRouteRoute
   AuthenticatedHistoryRouteRoute: typeof AuthenticatedHistoryRouteRoute
+  AuthenticatedImageEditorRouteRoute: typeof AuthenticatedImageEditorRouteRoute
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRouteRoute: AuthenticatedIndexRouteRoute,
   AuthenticatedHistoryRouteRoute: AuthenticatedHistoryRouteRoute,
+  AuthenticatedImageEditorRouteRoute: AuthenticatedImageEditorRouteRoute,
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRoute,
 }
 

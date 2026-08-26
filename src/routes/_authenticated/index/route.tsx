@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { PromptInput } from './-components/prompt-input'
+import { ChatPage } from './-components/chat-page'
 
 export const Route = createFileRoute('/_authenticated/')({
-  component: PromptInput,
+  component: ChatPage,
 })

@@ -21,26 +21,31 @@ export function PromptInput() {
         autoComplete="off"
         onSubmit={handleSubmit}
       >
-        <div className="flex h-fit items-center justify-center gap-1 rounded-[28px] border p-2">
-          <Button
-            aria-label="发送消息"
-            size="icon"
-            type="submit"
-            variant="ghost"
-          >
-            <HugeiconsIcon icon={PlusIcon} className="size-5" />
-          </Button>
-          <textarea
-            aria-label="输入消息"
-            className="h-full bg-transparent flex-1 resize-none outline-none placeholder:text-muted-foreground"
-            onChange={(event) => setValue(event.currentTarget.value)}
-            placeholder="给 swimmeret 发消息"
-            rows={1}
-            value={value}
-          />
-          <Button aria-label="发送消息" size="icon" type="submit">
-            <HugeiconsIcon icon={ArrowUp02Icon} />
-          </Button>
+        <div className="flex h-fit flex-col gap-1 rounded-[28px] border p-2">
+          <div className='p-2'>
+            <textarea
+              aria-label="输入消息"
+              className="w-full bg-transparent flex-1 resize-none outline-none placeholder:text-muted-foreground"
+              onChange={(event) => setValue(event.currentTarget.value)}
+              placeholder="给 swimmeret 发消息"
+              rows={2}
+              value={value}
+            />
+          </div>
+          <div className="flex justify-between">
+            <Button
+              aria-label="发送消息"
+              size="icon"
+              type="submit"
+              variant="ghost"
+            >
+              <HugeiconsIcon icon={PlusIcon} className="size-5" />
+            </Button>
+
+            <Button aria-label="发送消息" size="icon" type="submit">
+              <HugeiconsIcon icon={ArrowUp02Icon} />
+            </Button>
+          </div>
         </div>
       </form>
     </section>
