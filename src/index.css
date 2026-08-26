@@ -129,7 +129,7 @@
   }
 
   #root {
-    @apply h-screen
+    @apply h-screen;
   }
 
   button:not(:disabled),
