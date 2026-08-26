@@ -16,13 +16,17 @@ export function PromptInput() {
 
   return (
     <section className="flex min-h-0 flex-1 items-center justify-center px-4 py-8">
-      <form className="w-full max-w-3xl" onSubmit={handleSubmit}>
-        <div className="border h-fit rounded-3xl flex items-center justify-center p-1 gap-1">
+      <form
+        className="w-full max-w-3xl"
+        autoComplete="off"
+        onSubmit={handleSubmit}
+      >
+        <div className="flex h-fit items-center justify-center gap-1 rounded-[28px] border p-2">
           <Button
             aria-label="发送消息"
-            size="icon-lg"
+            size="icon"
             type="submit"
-            variant={'ghost'}
+            variant="ghost"
           >
             <HugeiconsIcon icon={PlusIcon} className="size-5" />
           </Button>
@@ -34,7 +38,7 @@ export function PromptInput() {
             rows={1}
             value={value}
           />
-          <Button aria-label="发送消息" size="icon-lg" type="submit">
+          <Button aria-label="发送消息" size="icon" type="submit">
             <HugeiconsIcon icon={ArrowUp02Icon} />
           </Button>
         </div>
