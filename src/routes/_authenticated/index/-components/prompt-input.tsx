@@ -15,7 +15,7 @@ export function PromptInput() {
   }
 
   return (
-    <section className="flex min-h-0 flex-1 items-center justify-center px-4 py-8">
+    <section className="flex min-h-0 flex-1 items-center justify-center py-8">
       <form
         className="w-full max-w-3xl"
         autoComplete="off"

@@ -9,6 +9,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
+import { Container } from '@/components/container'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -96,7 +97,9 @@ export function AppShell() {
         </div>
       </div>
 
-      <Outlet />
+      <Container className="flex min-h-0 flex-1">
+        <Outlet />
+      </Container>
     </main>
   )
 }

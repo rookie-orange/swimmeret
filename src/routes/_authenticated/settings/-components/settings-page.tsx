@@ -3,7 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 
 export function SettingsPage() {
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 pb-12 pt-28">
+    <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col pb-12 pt-28">
       <div className="flex items-center gap-3">
         <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
           <HugeiconsIcon icon={Settings01Icon} size={20} strokeWidth={1.8} />
