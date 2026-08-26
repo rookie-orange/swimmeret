@@ -9,50 +9,301 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as authRouteRouteImport } from './routes/(auth)/route'
+import { Route as errorsRouteRouteImport } from './routes/(errors)/route'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as authLoginRouteRouteImport } from './routes/(auth)/login/route'
+import { Route as AuthenticatedIndexRouteRouteImport } from './routes/_authenticated/index/route'
+import { Route as AuthenticatedHistoryRouteRouteImport } from './routes/_authenticated/history/route'
+import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
+import { Route as errorsErrorsStatusRouteRouteImport } from './routes/(errors)/errors/$status/route'
+import { Route as errorsErrors401RouteRouteImport } from './routes/(errors)/errors/401/route'
+import { Route as errorsErrors403RouteRouteImport } from './routes/(errors)/errors/403/route'
+import { Route as errorsErrors404RouteRouteImport } from './routes/(errors)/errors/404/route'
+import { Route as errorsErrors500RouteRouteImport } from './routes/(errors)/errors/500/route'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const authRouteRoute = authRouteRouteImport.update({
+  id: '/(auth)',
   getParentRoute: () => rootRouteImport,
+} as any)
+const errorsRouteRoute = errorsRouteRouteImport.update({
+  id: '/(errors)',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authLoginRouteRoute = authLoginRouteRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const AuthenticatedIndexRouteRoute = AuthenticatedIndexRouteRouteImport.update({
+  id: '/',
+  path: '',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHistoryRouteRoute =
+  AuthenticatedHistoryRouteRouteImport.update({
+    id: '/history',
+    path: '/history',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsRouteRoute =
+  AuthenticatedSettingsRouteRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const errorsErrorsStatusRouteRoute = errorsErrorsStatusRouteRouteImport.update({
+  id: '/errors/$status',
+  path: '/errors/$status',
+  getParentRoute: () => errorsRouteRoute,
+} as any)
+const errorsErrors401RouteRoute = errorsErrors401RouteRouteImport.update({
+  id: '/errors/401',
+  path: '/errors/401',
+  getParentRoute: () => errorsRouteRoute,
+} as any)
+const errorsErrors403RouteRoute = errorsErrors403RouteRouteImport.update({
+  id: '/errors/403',
+  path: '/errors/403',
+  getParentRoute: () => errorsRouteRoute,
+} as any)
+const errorsErrors404RouteRoute = errorsErrors404RouteRouteImport.update({
+  id: '/errors/404',
+  path: '/errors/404',
+  getParentRoute: () => errorsRouteRoute,
+} as any)
+const errorsErrors500RouteRoute = errorsErrors500RouteRouteImport.update({
+  id: '/errors/500',
+  path: '/errors/500',
+  getParentRoute: () => errorsRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRouteRoute
+  '/login': typeof authLoginRouteRoute
+  '/history': typeof AuthenticatedHistoryRouteRoute
+  '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/errors/$status': typeof errorsErrorsStatusRouteRoute
+  '/errors/401': typeof errorsErrors401RouteRoute
+  '/errors/403': typeof errorsErrors403RouteRoute
+  '/errors/404': typeof errorsErrors404RouteRoute
+  '/errors/500': typeof errorsErrors500RouteRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRouteRoute
+  '/login': typeof authLoginRouteRoute
+  '/history': typeof AuthenticatedHistoryRouteRoute
+  '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/errors/$status': typeof errorsErrorsStatusRouteRoute
+  '/errors/401': typeof errorsErrors401RouteRoute
+  '/errors/403': typeof errorsErrors403RouteRoute
+  '/errors/404': typeof errorsErrors404RouteRoute
+  '/errors/500': typeof errorsErrors500RouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/(auth)': typeof authRouteRouteWithChildren
+  '/(errors)': typeof errorsRouteRouteWithChildren
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/_authenticated/': typeof AuthenticatedIndexRouteRoute
+  '/(auth)/login': typeof authLoginRouteRoute
+  '/_authenticated/history': typeof AuthenticatedHistoryRouteRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
+  '/(errors)/errors/$status': typeof errorsErrorsStatusRouteRoute
+  '/(errors)/errors/401': typeof errorsErrors401RouteRoute
+  '/(errors)/errors/403': typeof errorsErrors403RouteRoute
+  '/(errors)/errors/404': typeof errorsErrors404RouteRoute
+  '/(errors)/errors/500': typeof errorsErrors500RouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/history'
+    | '/settings'
+    | '/errors/$status'
+    | '/errors/401'
+    | '/errors/403'
+    | '/errors/404'
+    | '/errors/500'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/history'
+    | '/settings'
+    | '/errors/$status'
+    | '/errors/401'
+    | '/errors/403'
+    | '/errors/404'
+    | '/errors/500'
+  id:
+    | '__root__'
+    | '/(auth)'
+    | '/(errors)'
+    | '/_authenticated'
+    | '/_authenticated/'
+    | '/(auth)/login'
+    | '/_authenticated/history'
+    | '/_authenticated/settings'
+    | '/(errors)/errors/$status'
+    | '/(errors)/errors/401'
+    | '/(errors)/errors/403'
+    | '/(errors)/errors/404'
+    | '/(errors)/errors/500'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  authRouteRoute: typeof authRouteRouteWithChildren
+  errorsRouteRoute: typeof errorsRouteRouteWithChildren
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/(auth)': {
+      id: '/(auth)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof authRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/(errors)': {
+      id: '/(errors)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof errorsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/login': {
+      id: '/(auth)/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof authLoginRouteRouteImport
+      parentRoute: typeof authRouteRoute
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedIndexRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/history': {
+      id: '/_authenticated/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof AuthenticatedHistoryRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/(errors)/errors/$status': {
+      id: '/(errors)/errors/$status'
+      path: '/errors/$status'
+      fullPath: '/errors/$status'
+      preLoaderRoute: typeof errorsErrorsStatusRouteRouteImport
+      parentRoute: typeof errorsRouteRoute
+    }
+    '/(errors)/errors/401': {
+      id: '/(errors)/errors/401'
+      path: '/errors/401'
+      fullPath: '/errors/401'
+      preLoaderRoute: typeof errorsErrors401RouteRouteImport
+      parentRoute: typeof errorsRouteRoute
+    }
+    '/(errors)/errors/403': {
+      id: '/(errors)/errors/403'
+      path: '/errors/403'
+      fullPath: '/errors/403'
+      preLoaderRoute: typeof errorsErrors403RouteRouteImport
+      parentRoute: typeof errorsRouteRoute
+    }
+    '/(errors)/errors/404': {
+      id: '/(errors)/errors/404'
+      path: '/errors/404'
+      fullPath: '/errors/404'
+      preLoaderRoute: typeof errorsErrors404RouteRouteImport
+      parentRoute: typeof errorsRouteRoute
+    }
+    '/(errors)/errors/500': {
+      id: '/(errors)/errors/500'
+      path: '/errors/500'
+      fullPath: '/errors/500'
+      preLoaderRoute: typeof errorsErrors500RouteRouteImport
+      parentRoute: typeof errorsRouteRoute
     }
   }
 }
 
+interface authRouteRouteChildren {
+  authLoginRouteRoute: typeof authLoginRouteRoute
+}
+
+const authRouteRouteChildren: authRouteRouteChildren = {
+  authLoginRouteRoute: authLoginRouteRoute,
+}
+
+const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
+  authRouteRouteChildren,
+)
+
+interface errorsRouteRouteChildren {
+  errorsErrorsStatusRouteRoute: typeof errorsErrorsStatusRouteRoute
+  errorsErrors401RouteRoute: typeof errorsErrors401RouteRoute
+  errorsErrors403RouteRoute: typeof errorsErrors403RouteRoute
+  errorsErrors404RouteRoute: typeof errorsErrors404RouteRoute
+  errorsErrors500RouteRoute: typeof errorsErrors500RouteRoute
+}
+
+const errorsRouteRouteChildren: errorsRouteRouteChildren = {
+  errorsErrorsStatusRouteRoute: errorsErrorsStatusRouteRoute,
+  errorsErrors401RouteRoute: errorsErrors401RouteRoute,
+  errorsErrors403RouteRoute: errorsErrors403RouteRoute,
+  errorsErrors404RouteRoute: errorsErrors404RouteRoute,
+  errorsErrors500RouteRoute: errorsErrors500RouteRoute,
+}
+
+const errorsRouteRouteWithChildren = errorsRouteRoute._addFileChildren(
+  errorsRouteRouteChildren,
+)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedIndexRouteRoute: typeof AuthenticatedIndexRouteRoute
+  AuthenticatedHistoryRouteRoute: typeof AuthenticatedHistoryRouteRoute
+  AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedIndexRouteRoute: AuthenticatedIndexRouteRoute,
+  AuthenticatedHistoryRouteRoute: AuthenticatedHistoryRouteRoute,
+  AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  authRouteRoute: authRouteRouteWithChildren,
+  errorsRouteRoute: errorsRouteRouteWithChildren,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
