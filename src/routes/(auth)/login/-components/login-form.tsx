@@ -82,10 +82,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           />
         </Button>
       </form>
-
-      <p className="mt-7 text-xs leading-5 text-muted-foreground">
-        没有账号注册流程，key 是唯一的访问凭证。
-      </p>
     </section>
   )
 }

@@ -7,7 +7,6 @@ import {
   PinIcon,
   PinOffIcon,
   Share01Icon,
-  SidebarLeft01Icon,
   SparklesIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -43,9 +42,6 @@ const starterPrompts = [
 ] as const
 
 export function ChatPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth >= 1024,
-  )
   const [activeConversation, setActiveConversation] = useState(0)
   const [pinnedConversation, setPinnedConversation] = useState<number | null>(
     null,
@@ -54,29 +50,10 @@ export function ChatPage() {
 
   return (
     <section className="relative flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              aria-label="显示或隐藏历史记录"
-              className="absolute top-5 right-5 z-30 rounded-full text-muted-foreground"
-              onClick={() => setSidebarOpen((current) => !current)}
-              size="icon"
-              variant="ghost"
-            />
-          }
-        >
-          <HugeiconsIcon icon={SidebarLeft01Icon} />
-        </TooltipTrigger>
-        <TooltipContent>历史记录</TooltipContent>
-      </Tooltip>
-
       <aside
         className={cn(
-          'absolute inset-y-4 top-8 left-5 z-20 flex w-64 origin-left flex-col gap-4 overflow-hidden rounded-3xl border border-border bg-card/95 p-3 shadow-xl shadow-foreground/5 backdrop-blur-xl transition-all duration-300 motion-reduce:transition-none lg:left-6',
-          sidebarOpen
-            ? 'translate-x-0 scale-100 opacity-100'
-            : 'pointer-events-none -translate-x-3 scale-95 opacity-0',
+          'absolute inset-y-4 left-4 z-20 flex w-64 origin-left flex-col gap-4 overflow-hidden rounded-3xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl transition-all duration-300 motion-reduce:transition-none',
+          'translate-x-0 scale-100 opacity-100',
         )}
       >
         <div className="flex items-center px-2 pt-1">
@@ -214,14 +191,6 @@ export function ChatPage() {
               </div>
             </div>
           ))}
-        </div>
-        <div className="rounded-2xl bg-muted/60 p-3">
-          <div className="flex items-start gap-2">
-            <HugeiconsIcon icon={SparklesIcon} className="text-primary" />
-            <p className="text-xs leading-5 text-muted-foreground">
-              发送一条消息，AI 会帮你把想法整理成可编辑的作品。
-            </p>
-          </div>
         </div>
       </aside>
 
