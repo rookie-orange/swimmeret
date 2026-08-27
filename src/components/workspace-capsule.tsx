@@ -106,39 +106,41 @@ export function WorkspaceCapsule() {
       >
         <div
           className={cn(
-            'relative max-w-full',
-            workspace === 'chat' ? 'w-full max-w-2xl' : 'w-fit',
+            'relative flex max-w-full items-center gap-2',
+            workspace === 'chat' ? 'w-full max-w-3xl' : 'w-fit',
           )}
         >
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-expanded={menuOpen}
+                  aria-label="切换工作区"
+                  className={cn(
+                    'pointer-events-auto size-14 rounded-full shadow-2xl shadow-foreground/10  backdrop-blur-xl transition-transform duration-300 motion-reduce:transition-none',
+                    menuOpen && 'rotate-12',
+                  )}
+                  onClick={() => setMenuOpen((current) => !current)}
+                  size="icon-lg"
+                />
+              }
+            >
+              <HugeiconsIcon
+                icon={workspaceMeta?.icon ?? ChatIcon}
+                className="size-5"
+              />
+            </TooltipTrigger>
+            <TooltipContent>切换工作区</TooltipContent>
+          </Tooltip>
+
           <motion.div
             layout
             transition={reduceMotion ? { duration: 0 } : capsuleSpring}
             className={cn(
               'pointer-events-auto flex min-h-14 items-center gap-1 rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl',
-              workspace === 'chat' ? 'w-full' : 'w-fit max-w-full',
+              workspace === 'chat' ? 'min-w-0 flex-1' : 'w-fit max-w-full',
             )}
           >
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    aria-expanded={menuOpen}
-                    aria-label="切换工作区"
-                    className={cn(
-                      'rounded-full transition-transform duration-300 motion-reduce:transition-none',
-                      menuOpen && 'rotate-12',
-                    )}
-                    onClick={() => setMenuOpen((current) => !current)}
-                    size="icon-lg"
-                    variant={menuOpen ? 'secondary' : 'default'}
-                  />
-                }
-              >
-                <HugeiconsIcon icon={workspaceMeta?.icon ?? ChatIcon} />
-              </TooltipTrigger>
-              <TooltipContent>切换工作区</TooltipContent>
-            </Tooltip>
-
             <div className="flex min-w-0 flex-1 items-center overflow-hidden">
               <AnimatePresence initial={false} mode="wait">
                 {workspace === 'chat' ? (
@@ -155,15 +157,6 @@ export function WorkspaceCapsule() {
                         : { duration: 0.2, ease: 'easeOut' }
                     }
                   >
-                    <Input
-                      aria-label="输入消息"
-                      className="h-10 min-w-0 flex-1 rounded-full border-0 bg-transparent px-3 shadow-none focus-visible:ring-0"
-                      onChange={(event) =>
-                        setMessage(event.currentTarget.value)
-                      }
-                      placeholder="描述一个想法，开始创作……"
-                      value={message}
-                    />
                     <Tooltip>
                       <TooltipTrigger
                         render={
@@ -180,6 +173,15 @@ export function WorkspaceCapsule() {
                       </TooltipTrigger>
                       <TooltipContent>添加参考图</TooltipContent>
                     </Tooltip>
+                    <Input
+                      aria-label="输入消息"
+                      className="h-10 min-w-0 flex-1 rounded-full border-0 bg-transparent px-3 shadow-none focus-visible:ring-0"
+                      onChange={(event) =>
+                        setMessage(event.currentTarget.value)
+                      }
+                      placeholder="描述一个想法，开始创作……"
+                      value={message}
+                    />
                     <Tooltip>
                       <TooltipTrigger
                         render={
@@ -218,14 +220,16 @@ export function WorkspaceCapsule() {
                               aria-pressed={activeTool === tool.label}
                               className={cn(
                                 'size-10 rounded-full text-muted-foreground transition-all duration-200 motion-reduce:transition-none',
-                                activeTool === tool.label &&
-                                  'bg-secondary text-foreground shadow-sm',
                                 index === imageTools.length - 1 &&
                                   'text-primary hover:text-primary',
                               )}
                               onClick={() => setActiveTool(tool.label)}
                               size="icon"
-                              variant="ghost"
+                              variant={
+                                activeTool === tool.label
+                                  ? 'secondary'
+                                  : 'ghost'
+                              }
                             />
                           }
                         >
