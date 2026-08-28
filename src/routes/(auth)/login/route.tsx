@@ -6,7 +6,7 @@ function LoginPage() {
   const navigate = useNavigate()
 
   return (
-    <main className="flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-12 text-foreground">
+    <main className="flex h-full min-h-0 items-center justify-center overflow-hidden bg-background px-6 py-12 text-foreground">
       <div className="w-full max-w-md">
         <LoginForm onSuccess={() => void navigate({ to: '/' })} />
       </div>

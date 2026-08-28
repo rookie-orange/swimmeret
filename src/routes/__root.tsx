@@ -4,13 +4,15 @@ import { ErrorPage } from './(errors)/-components/error-page'
 
 export const Route = createRootRoute({
   component: () => (
-    <div className="relative h-screen min-h-0 overflow-hidden">
+    <div className="relative flex h-screen min-h-0 flex-col overflow-hidden">
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 z-10 h-10 select-none"
+        className="h-10 shrink-0 select-none"
         data-tauri-drag-region
       />
-      <Outlet />
+      <div className="min-h-0 flex-1">
+        <Outlet />
+      </div>
     </div>
   ),
   notFoundComponent: () => (

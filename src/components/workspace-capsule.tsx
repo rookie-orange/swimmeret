@@ -106,7 +106,11 @@ function NavItem({
   )
 }
 
-export function WorkspaceCapsule() {
+type WorkspaceCapsuleProps = {
+  className?: string
+}
+
+export function WorkspaceCapsule({ className }: WorkspaceCapsuleProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
@@ -119,8 +123,8 @@ export function WorkspaceCapsule() {
   }
 
   return (
-    <aside className="pointer-events-none fixed inset-y-0 top-4 left-0 z-40 flex w-20 flex-col items-center px-3 py-4">
-      <div className="pointer-events-auto flex p-2 items-center justify-center rounded-full border border-border bg-card/90 shadow-xl shadow-foreground/10 backdrop-blur-xl">
+    <aside className={className}>
+      <div className="pointer-events-auto flex items-center justify-center rounded-full border border-border bg-card/90 p-2 shadow-xl shadow-foreground/10 backdrop-blur-xl">
         <DropdownMenu onOpenChange={setAccountMenuOpen} open={accountMenuOpen}>
           <DropdownMenuTrigger
             render={
@@ -172,7 +176,7 @@ export function WorkspaceCapsule() {
         </DropdownMenu>
       </div>
 
-      <div className="pointer-events-auto mt-3 flex w-14 flex-col items-center rounded-full p-2 border border-border bg-card/90 shadow-xl shadow-foreground/10 backdrop-blur-xl">
+      <div className="pointer-events-auto mt-3 flex w-14 flex-col items-center rounded-full border border-border bg-card/90 p-2 shadow-xl shadow-foreground/10 backdrop-blur-xl">
         <nav aria-label="主导航" className="flex flex-col items-center gap-1">
           {workspaces.map((item) => (
             <NavItem
