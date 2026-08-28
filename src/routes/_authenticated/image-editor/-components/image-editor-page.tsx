@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+import { ImageEditorDock } from './image-editor-dock'
+
 const layers = [
   { name: '标题 · 春日限定', type: '文字', icon: TextIcon },
   { name: '产品主体', type: '图片', icon: ImageAdd01Icon },
@@ -238,6 +240,8 @@ export function ImageEditorPage() {
           </Button>
         </div>
       </aside>
+
+      <ImageEditorDock />
     </section>
   )
 }

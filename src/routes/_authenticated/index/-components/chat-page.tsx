@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+import { ChatDock } from './chat-dock'
+
 const conversations = [
   '春日上新海报',
   '品牌视觉方向探索',
@@ -194,7 +196,7 @@ export function ChatPage() {
         </div>
       </aside>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-20 pb-32 transition-[padding] duration-300 motion-reduce:transition-none lg:pl-80 lg:pr-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-20 pb-32 transition-[padding] duration-300 motion-reduce:transition-none lg:pl-72 lg:pr-8">
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-8">
           <div className="flex items-start gap-4">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
@@ -230,6 +232,8 @@ export function ChatPage() {
           </div>
         </div>
       </div>
+
+      <ChatDock />
     </section>
   )
 }

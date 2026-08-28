@@ -7,9 +7,9 @@ export function HistoryPage() {
       <div className="flex size-14 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
         <HugeiconsIcon icon={Clock01Icon} size={26} strokeWidth={1.8} />
       </div>
-      <h1 className="mt-6 text-2xl font-semibold tracking-tight">历史记录</h1>
+      <h1 className="mt-6 text-2xl font-semibold tracking-tight">资源管理</h1>
       <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-        你开始的对话会出现在这里。当前版本先保留工作流入口。
+        你的文案、图片和未来生成的视频都会集中出现在这里。
       </p>
     </section>
   )
