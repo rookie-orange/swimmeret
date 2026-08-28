@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import {
   AiImageEditIcon,
   AiVideoIcon,
@@ -33,15 +33,28 @@ import { logout } from '@/lib/auth'
 type WorkspaceId = 'chat' | 'image-editor' | 'video' | 'history'
 
 const workspaces = [
-  { id: 'chat', label: '对话', to: '/', icon: ChatIcon },
+  { id: 'chat', label: '对话', to: '/', icon: ChatIcon, disabled: false },
   {
     id: 'image-editor',
     label: '图片编辑',
     to: '/image-editor',
     icon: AiImageEditIcon,
+    disabled: false,
   },
-  { id: 'video', label: '视频生成', icon: AiVideoIcon },
-  { id: 'history', label: '资源管理', to: '/history', icon: Folder01Icon },
+  {
+    id: 'video',
+    label: '视频生成',
+    to: undefined,
+    icon: AiVideoIcon,
+    disabled: true,
+  },
+  {
+    id: 'history',
+    label: '资源管理',
+    to: '/history',
+    icon: Folder01Icon,
+    disabled: false,
+  },
 ] as const
 
 function getWorkspace(pathname: string): WorkspaceId {
@@ -58,41 +71,32 @@ function NavItem({
   to,
 }: {
   active: boolean
-  disabled?: boolean
+  disabled: boolean
   icon: typeof ChatIcon
   label: string
-  to?: string
+  to: '/' | '/image-editor' | '/history' | undefined
 }) {
-  const className = cn(
-    'inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-all duration-200 outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none',
-    active &&
-      'bg-primary text-primary-foreground shadow-sm hover:bg-primary/80',
-  )
+  const navigate = useNavigate()
 
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          to ? (
-            <Link
-              aria-current={active ? 'page' : undefined}
-              aria-label={label}
-              className={className}
-              to={to}
-            >
-              <HugeiconsIcon icon={icon} />
-            </Link>
-          ) : (
-            <Button
-              aria-current={active ? 'page' : undefined}
-              aria-label={disabled ? `${label}，即将推出` : label}
-              disabled={disabled}
-              size="icon"
-              variant={active ? 'default' : 'ghost'}
-            >
-              <HugeiconsIcon icon={icon} />
-            </Button>
-          )
+          <Button
+            aria-current={active ? 'page' : undefined}
+            aria-label={disabled ? `${label}，即将推出` : label}
+            disabled={disabled}
+            onClick={() => {
+              if (to) void navigate({ to })
+            }}
+            className={cn(
+              'transition-all duration-200 motion-reduce:transition-none',
+            )}
+            size="icon-lg"
+            variant={active ? 'default' : 'ghost'}
+          >
+            <HugeiconsIcon icon={icon} />
+          </Button>
         }
       />
       <TooltipContent side="right">
@@ -115,23 +119,22 @@ export function WorkspaceCapsule() {
   }
 
   return (
-    <aside className="pointer-events-none fixed inset-y-0 left-0 z-40 flex w-20 flex-col items-center px-3 py-4">
-      <div className="pointer-events-auto flex size-14 items-center justify-center rounded-full border border-border bg-card/90 p-1.5 shadow-xl shadow-foreground/10 backdrop-blur-xl">
+    <aside className="pointer-events-none fixed inset-y-0 top-4 left-0 z-40 flex w-20 flex-col items-center px-3 py-4">
+      <div className="pointer-events-auto flex p-2 items-center justify-center rounded-full border border-border bg-card/90 shadow-xl shadow-foreground/10 backdrop-blur-xl">
         <DropdownMenu onOpenChange={setAccountMenuOpen} open={accountMenuOpen}>
           <DropdownMenuTrigger
             render={
               <Button
                 aria-label="打开账户菜单"
-                className="size-11 rounded-full p-0 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                size="icon"
+                size="icon-lg"
                 type="button"
-                variant="ghost"
+                variant="default"
               />
             }
           >
-            <Avatar size="lg">
+            <Avatar>
               <AvatarFallback className="bg-primary text-primary-foreground">
-                <HugeiconsIcon icon={UserIcon} strokeWidth={1.8} />
+                <HugeiconsIcon icon={UserIcon} />
               </AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
@@ -161,7 +164,7 @@ export function WorkspaceCapsule() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={handleLogout} variant="destructive">
-                <HugeiconsIcon icon={Logout01Icon} strokeWidth={1.8} />
+                <HugeiconsIcon icon={Logout01Icon} />
                 退出登录
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -169,16 +172,16 @@ export function WorkspaceCapsule() {
         </DropdownMenu>
       </div>
 
-      <div className="pointer-events-auto mt-3 flex w-14 flex-col items-center gap-1 rounded-[1.75rem] border border-border bg-card/90 p-1.5 shadow-xl shadow-foreground/10 backdrop-blur-xl">
+      <div className="pointer-events-auto mt-3 flex w-14 flex-col items-center rounded-full p-2 border border-border bg-card/90 shadow-xl shadow-foreground/10 backdrop-blur-xl">
         <nav aria-label="主导航" className="flex flex-col items-center gap-1">
           {workspaces.map((item) => (
             <NavItem
               active={workspace === item.id}
-              disabled={item.id === 'video'}
+              disabled={item.disabled}
               icon={item.icon}
               key={item.id}
               label={item.label}
-              to={'to' in item ? item.to : undefined}
+              to={item.to}
             />
           ))}
         </nav>
@@ -188,17 +191,24 @@ export function WorkspaceCapsule() {
         <Tooltip>
           <TooltipTrigger
             render={
-              <Link
+              <Button
                 aria-label="设置"
                 className={cn(
-                  'inline-flex size-11 items-center justify-center rounded-2xl text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50',
-                  location.pathname.startsWith('/settings') &&
-                    'bg-secondary text-secondary-foreground',
+                  'size-11 rounded-2xl transition-colors motion-reduce:transition-none',
+                  !location.pathname.startsWith('/settings') &&
+                    'text-muted-foreground',
                 )}
-                to="/settings"
+                onClick={() => void navigate({ to: '/settings' })}
+                size="icon"
+                type="button"
+                variant={
+                  location.pathname.startsWith('/settings')
+                    ? 'secondary'
+                    : 'ghost'
+                }
               >
-                <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.8} />
-              </Link>
+                <HugeiconsIcon icon={Settings01Icon} />
+              </Button>
             }
           />
           <TooltipContent side="right">设置</TooltipContent>
