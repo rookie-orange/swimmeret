@@ -18,10 +18,12 @@ import {
   Settings01Icon,
   ShapesIcon,
   TextIcon,
+  UserIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
 import { AutoWidth } from '@/components/auto-width'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -73,6 +75,7 @@ export function WorkspaceCapsule() {
   const location = useLocation()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [activeTool, setActiveTool] = useState('选择')
   const workspace = getWorkspace(location.pathname)
@@ -87,7 +90,7 @@ export function WorkspaceCapsule() {
 
   const handleLogout = () => {
     logout()
-    setMenuOpen(false)
+    setAccountMenuOpen(false)
     void navigate({ to: '/login' })
   }
 
@@ -99,7 +102,7 @@ export function WorkspaceCapsule() {
       )}
     >
       <div className="relative flex h-14 max-w-full items-center gap-2">
-        <div className="flex size-14 shrink-0">
+        <div className="pointer-events-auto flex size-14 shrink-0 items-center justify-center rounded-full border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
           <Tooltip>
             <DropdownMenu onOpenChange={setMenuOpen} open={menuOpen}>
               <DropdownMenuTrigger
@@ -108,7 +111,7 @@ export function WorkspaceCapsule() {
                     render={
                       <Button
                         aria-label={menuOpen ? '关闭工作区菜单' : '切换工作区'}
-                        className="pointer-events-auto size-14 rounded-full shadow-2xl shadow-foreground/40 backdrop-blur-xl"
+                        className="size-10 rounded-full"
                         size="icon-lg"
                         type="button"
                       />
@@ -174,20 +177,6 @@ export function WorkspaceCapsule() {
                     ),
                   )}
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem render={<Link to="/settings" />}>
-                    <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.8} />
-                    设置
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    variant="destructive"
-                  >
-                    <HugeiconsIcon icon={Logout01Icon} strokeWidth={1.8} />
-                    退出
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
             <TooltipContent>
@@ -199,7 +188,7 @@ export function WorkspaceCapsule() {
         <AutoWidth className="pointer-events-auto h-14 shrink-0 rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
           {workspace === 'chat' ? (
             <form
-              className="flex h-10 w-2xl max-w-[calc(100vw-7rem)] items-center gap-1"
+              className="flex h-10 w-2xl max-w-[calc(100vw-11rem)] items-center gap-1"
               onSubmit={handleSubmit}
             >
               <Tooltip>
@@ -242,7 +231,7 @@ export function WorkspaceCapsule() {
               </Tooltip>
             </form>
           ) : (
-            <div className="flex h-10 w-max max-w-[calc(100vw-7rem)] items-center gap-0.5 overflow-x-auto px-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
+            <div className="flex h-10 w-max max-w-[calc(100vw-11rem)] items-center gap-0.5 overflow-x-auto px-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
               {imageTools.map((tool, index) => (
                 <Tooltip key={tool.label}>
                   <TooltipTrigger
@@ -286,6 +275,80 @@ export function WorkspaceCapsule() {
             </div>
           )}
         </AutoWidth>
+
+        <div className="pointer-events-auto flex size-14 shrink-0 items-center justify-center rounded-full border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
+          <Tooltip>
+            <DropdownMenu
+              onOpenChange={setAccountMenuOpen}
+              open={accountMenuOpen}
+            >
+              <DropdownMenuTrigger
+                render={
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        aria-label={
+                          accountMenuOpen ? '关闭账户菜单' : '打开账户菜单'
+                        }
+                        className="size-10 rounded-full p-0"
+                        size="icon-lg"
+                        type="button"
+                        variant="ghost"
+                      />
+                    }
+                  />
+                }
+              >
+                <Avatar size="lg">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    <HugeiconsIcon icon={UserIcon} strokeWidth={1.8} />
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-64 p-2"
+                side="top"
+                sideOffset={12}
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="flex items-center gap-3 px-3 py-3">
+                    <Avatar size="lg">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        <HugeiconsIcon icon={UserIcon} strokeWidth={1.8} />
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-sm font-medium text-foreground">
+                        swimmeret
+                      </span>
+                      <span className="text-xs font-normal text-muted-foreground">
+                        当前已登录
+                      </span>
+                    </span>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem render={<Link to="/settings" />}>
+                    <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.8} />
+                    设置
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    variant="destructive"
+                  >
+                    <HugeiconsIcon icon={Logout01Icon} strokeWidth={1.8} />
+                    退出登录
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <TooltipContent>
+              {accountMenuOpen ? '关闭账户菜单' : '账户'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </div>
   )
