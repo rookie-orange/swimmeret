@@ -22,7 +22,7 @@ export function ChatDock() {
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-5 z-30 flex justify-center px-4 sm:bottom-7">
+    <div className="pointer-events-none absolute right-0 bottom-5 left-0 z-30 flex justify-center px-4 sm:bottom-7 lg:left-72">
       <AutoWidth className="pointer-events-auto h-14 max-w-full rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
         <form
           className="flex h-11 w-[min(40rem,calc(100vw-7rem))] max-w-full items-center gap-1"
