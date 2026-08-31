@@ -5,11 +5,6 @@ import { ErrorPage } from './(errors)/-components/error-page'
 export const Route = createRootRoute({
   component: () => (
     <div className="relative flex h-screen min-h-0 flex-col overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="h-10 shrink-0 select-none"
-        data-tauri-drag-region
-      />
       <div className="min-h-0 flex-1">
         <Outlet />
       </div>

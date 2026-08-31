@@ -11,12 +11,18 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-export function ChatDock() {
+type ChatInputProps = {
+  onSubmit: (message: string) => void
+}
+
+export function ChatInput({ onSubmit }: ChatInputProps) {
   const [message, setMessage] = useState('')
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!message.trim()) return
+    const trimmedMessage = message.trim()
+    if (!trimmedMessage) return
+    onSubmit(trimmedMessage)
     setMessage('')
   }
 
@@ -56,6 +62,7 @@ export function ChatDock() {
                 <Button
                   aria-label="发送消息"
                   className="shrink-0 rounded-full"
+                  disabled={!message.trim()}
                   size="icon-lg"
                   type="submit"
                 />
