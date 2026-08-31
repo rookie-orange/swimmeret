@@ -51,13 +51,8 @@ export function ChatPage() {
   const [conversationList, setConversationList] = useState([...conversations])
 
   return (
-    <section className="relative flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <aside
-        className={cn(
-          'absolute inset-y-4 left-4 z-20 flex w-64 origin-left flex-col gap-4 overflow-hidden rounded-3xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl transition-all duration-300 motion-reduce:transition-none',
-          'translate-x-0 scale-100 opacity-100',
-        )}
-      >
+    <section className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-4 overflow-hidden bg-background p-4 md:grid-cols-[16rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)_auto]">
+      <aside className="col-start-1 row-start-1 hidden min-h-0 flex-col gap-4 overflow-hidden rounded-3xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl md:flex">
         <div className="flex items-center px-2 pt-1">
           <h1 className="text-lg font-semibold tracking-tight">聊天</h1>
         </div>
@@ -196,7 +191,7 @@ export function ChatPage() {
         </div>
       </aside>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-20 pb-32 transition-[padding] duration-300 motion-reduce:transition-none lg:pl-72 lg:pr-8">
+      <div className="col-start-1 row-start-1 flex min-h-0 min-w-0 flex-col overflow-y-auto px-1 py-4 sm:px-4 md:col-start-2 md:px-4 md:py-6">
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-8">
           <div className="flex items-start gap-4">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">

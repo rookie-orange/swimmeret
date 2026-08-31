@@ -3,7 +3,6 @@ import type { FormEvent } from 'react'
 import { ArrowUp02Icon, Attachment01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
-import { AutoWidth } from '@/components/auto-width'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -22,10 +21,10 @@ export function ChatDock() {
   }
 
   return (
-    <div className="pointer-events-none absolute right-0 bottom-5 left-0 z-30 flex justify-center px-4 sm:bottom-7 lg:left-72">
-      <AutoWidth className="pointer-events-auto h-14 max-w-full rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
+    <div className="col-start-1 row-start-2 flex min-w-0 justify-center md:col-start-2">
+      <div className="w-full max-w-2xl rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
         <form
-          className="flex h-11 w-[min(40rem,calc(100vw-7rem))] max-w-full items-center gap-1"
+          className="flex h-11 min-w-0 items-center gap-1"
           onSubmit={handleSubmit}
         >
           <Tooltip>
@@ -67,7 +66,7 @@ export function ChatDock() {
             <TooltipContent>发送消息</TooltipContent>
           </Tooltip>
         </form>
-      </AutoWidth>
+      </div>
     </div>
   )
 }

@@ -42,71 +42,73 @@ export function ImageEditorPage() {
   const [selectedLayer, setSelectedLayer] = useState(0)
 
   return (
-    <section className="relative h-full min-h-0 overflow-hidden bg-muted/40">
-      <header className="absolute top-4 left-4 z-20 flex items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            aria-label="返回聊天"
-            className={cn(
-              buttonVariants({ size: 'icon-sm', variant: 'ghost' }),
-              'shrink-0 rounded-full text-muted-foreground',
-            )}
-            to="/"
-          >
-            <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
-          </Link>
-        </div>
-      </header>
+    <section className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-4 overflow-hidden bg-muted/40 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[auto_minmax(0,1fr)_auto]">
+      <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-between gap-3">
+        <header className="flex min-w-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              aria-label="返回聊天"
+              className={cn(
+                buttonVariants({ size: 'icon-sm', variant: 'ghost' }),
+                'shrink-0 rounded-full text-muted-foreground',
+              )}
+              to="/"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
+            </Link>
+          </div>
+        </header>
 
-      <div className="absolute top-4 right-4 z-20 flex h-14 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl lg:right-80">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label="撤销"
-                className="rounded-full"
-                size="icon-sm"
-                variant="ghost"
-              />
-            }
+        <div className="flex h-14 min-w-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label="撤销"
+                  className="rounded-full"
+                  size="icon-sm"
+                  variant="ghost"
+                />
+              }
+            >
+              <HugeiconsIcon icon={Undo02Icon} strokeWidth={1.8} />
+            </TooltipTrigger>
+            <TooltipContent>撤销</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label="重做"
+                  className="hidden rounded-full sm:inline-flex"
+                  size="icon-sm"
+                  variant="ghost"
+                />
+              }
+            >
+              <HugeiconsIcon icon={Redo02Icon} strokeWidth={1.8} />
+            </TooltipTrigger>
+            <TooltipContent>重做</TooltipContent>
+          </Tooltip>
+          <Button
+            className="hidden rounded-full xl:inline-flex"
+            size="sm"
+            variant="ghost"
           >
-            <HugeiconsIcon icon={Undo02Icon} strokeWidth={1.8} />
-          </TooltipTrigger>
-          <TooltipContent>撤销</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label="重做"
-                className="hidden rounded-full sm:inline-flex"
-                size="icon-sm"
-                variant="ghost"
-              />
-            }
-          >
-            <HugeiconsIcon icon={Redo02Icon} strokeWidth={1.8} />
-          </TooltipTrigger>
-          <TooltipContent>重做</TooltipContent>
-        </Tooltip>
-        <Button
-          className="hidden rounded-full xl:inline-flex"
-          size="sm"
-          variant="ghost"
-        >
-          <HugeiconsIcon
-            icon={ViewIcon}
-            data-icon="inline-start"
-            strokeWidth={1.8}
-          />
-          预览
-        </Button>
-        <Button className="rounded-full" size="sm">
-          导出
-        </Button>
+            <HugeiconsIcon
+              icon={ViewIcon}
+              data-icon="inline-start"
+              strokeWidth={1.8}
+            />
+            预览
+          </Button>
+          <Button className="rounded-full" size="sm">
+            导出
+          </Button>
+        </div>
       </div>
 
-      <main className="flex h-full min-h-0 items-center justify-center overflow-auto px-4 pt-24 pb-28 sm:px-8 lg:pr-80">
+      <main className="col-start-1 row-start-2 flex min-h-0 min-w-0 items-center justify-center overflow-auto px-1 sm:px-4">
         <div className="relative aspect-[4/5] w-full max-w-sm shrink-0 overflow-hidden rounded-lg border border-border bg-background shadow-2xl shadow-foreground/10 lg:max-w-md">
           <div className="absolute inset-0 bg-secondary" />
           <div className="absolute -top-20 -right-14 size-64 rounded-full bg-primary/60 blur-2xl" />
@@ -145,7 +147,7 @@ export function ImageEditorPage() {
         </div>
       </main>
 
-      <aside className="absolute top-4 right-4 bottom-24 z-20 hidden w-72 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl shadow-foreground/5 backdrop-blur-xl lg:flex">
+      <aside className="col-start-2 row-span-3 row-start-1 hidden min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl shadow-foreground/5 backdrop-blur-xl lg:flex">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold">

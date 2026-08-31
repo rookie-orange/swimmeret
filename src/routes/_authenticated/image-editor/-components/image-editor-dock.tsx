@@ -11,7 +11,6 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
-import { AutoWidth } from '@/components/auto-width'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -34,9 +33,9 @@ export function ImageEditorDock() {
   const [activeTool, setActiveTool] = useState('选择')
 
   return (
-    <div className="pointer-events-none absolute inset-x-4 bottom-5 z-30 flex justify-center sm:bottom-7 lg:right-80">
-      <AutoWidth className="pointer-events-auto h-14 max-w-full rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
-        <div className="flex h-11 max-w-[calc(100vw-7rem)] items-center gap-0.5 overflow-x-auto px-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
+    <div className="col-start-1 row-start-3 flex min-w-0 justify-center">
+      <div className="w-full max-w-xl rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
+        <div className="flex h-11 min-w-0 items-center gap-0.5 overflow-x-auto px-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
           {imageTools.map((tool) => (
             <Tooltip key={tool.label}>
               <TooltipTrigger
@@ -76,7 +75,7 @@ export function ImageEditorDock() {
             <TooltipContent>更多工具</TooltipContent>
           </Tooltip>
         </div>
-      </AutoWidth>
+      </div>
     </div>
   )
 }
