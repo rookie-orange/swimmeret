@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   AiSparklesIcon,
   CursorPointer01Icon,
@@ -10,6 +9,7 @@ import {
   TextIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { type Editor, useValue } from 'tldraw'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -20,37 +20,51 @@ import {
 import { cn } from '@/lib/utils'
 
 const imageTools = [
-  { label: '选择', icon: CursorPointer01Icon },
-  { label: '抓手', icon: HandIcon },
-  { label: '钢笔', icon: PencilEdit01Icon },
-  { label: '文字', icon: TextIcon },
-  { label: '形状', icon: ShapesIcon },
-  { label: '素材', icon: ImageAdd01Icon },
-  { label: 'AI 助手', icon: AiSparklesIcon },
+  { id: 'select', label: '选择', icon: CursorPointer01Icon },
+  { id: 'hand', label: '抓手', icon: HandIcon },
+  { id: 'draw', label: '钢笔', icon: PencilEdit01Icon },
+  { id: 'text', label: '文字', icon: TextIcon },
+  { id: 'geo', label: '形状', icon: ShapesIcon },
 ] as const
 
-export function ImageEditorDock() {
-  const [activeTool, setActiveTool] = useState('选择')
+interface ImageEditorDockProps {
+  editor: Editor | null
+  isImporting: boolean
+  onAddImages: () => void
+}
+
+export function ImageEditorDock({
+  editor,
+  isImporting,
+  onAddImages,
+}: ImageEditorDockProps) {
+  const activeTool = useValue(
+    'image editor active tool',
+    () => editor?.getCurrentToolId() ?? 'select',
+    [editor],
+  )
 
   return (
     <div className="col-start-1 row-start-3 flex min-w-0 justify-center">
-      <div className="w-full max-w-xl rounded-[28px] border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
+      <div className="w-full max-w-xl rounded-3xl border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
         <div className="flex h-11 min-w-0 items-center gap-0.5 overflow-x-auto px-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
           {imageTools.map((tool) => (
-            <Tooltip key={tool.label}>
+            <Tooltip key={tool.id}>
               <TooltipTrigger
                 render={
                   <Button
                     aria-label={tool.label}
-                    aria-pressed={activeTool === tool.label}
+                    aria-pressed={activeTool === tool.id}
                     className={cn(
                       'size-10 shrink-0 rounded-full text-muted-foreground transition-all duration-200 motion-reduce:transition-none',
-                      tool.label === 'AI 助手' &&
-                        'text-primary hover:text-primary',
                     )}
-                    onClick={() => setActiveTool(tool.label)}
+                    disabled={!editor}
+                    onClick={() => {
+                      editor?.setCurrentTool(tool.id)
+                      editor?.focus()
+                    }}
                     size="icon"
-                    variant={activeTool === tool.label ? 'secondary' : 'ghost'}
+                    variant={activeTool === tool.id ? 'secondary' : 'ghost'}
                   />
                 }
               >
@@ -63,8 +77,42 @@ export function ImageEditorDock() {
             <TooltipTrigger
               render={
                 <Button
+                  aria-label="素材"
+                  className="size-10 shrink-0 rounded-full text-muted-foreground"
+                  disabled={!editor || isImporting}
+                  onClick={onAddImages}
+                  size="icon"
+                  variant="ghost"
+                />
+              }
+            >
+              <HugeiconsIcon icon={ImageAdd01Icon} />
+            </TooltipTrigger>
+            <TooltipContent>{isImporting ? '正在导入' : '素材'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label="AI 助手"
+                  className="size-10 shrink-0 rounded-full text-primary"
+                  disabled
+                  size="icon"
+                  variant="ghost"
+                />
+              }
+            >
+              <HugeiconsIcon icon={AiSparklesIcon} />
+            </TooltipTrigger>
+            <TooltipContent>AI 助手暂未开放</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
                   aria-label="更多工具"
                   className="size-10 shrink-0 rounded-full text-muted-foreground"
+                  disabled
                   size="icon"
                   variant="ghost"
                 />
