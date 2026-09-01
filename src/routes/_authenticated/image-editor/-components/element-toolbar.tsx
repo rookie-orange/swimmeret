@@ -4,6 +4,7 @@ import {
   Delete02Icon,
   LayerBringToFrontIcon,
   LayerSendToBackIcon,
+  UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useEditor, useValue } from 'tldraw'
@@ -14,17 +15,35 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 const TOOLBAR_WIDTH = 160
+const IMAGE_TOOLBAR_WIDTH = 200
 const TOOLBAR_HEIGHT = 40
 const TOOLBAR_GAP = 8
 const VIEWPORT_MARGIN = 8
 
 const actions = [
-  { id: 'copy', label: '复制', icon: Copy01Icon },
-  { id: 'front', label: '置于顶层', icon: LayerBringToFrontIcon },
-  { id: 'back', label: '置于底层', icon: LayerSendToBackIcon },
-  { id: 'delete', label: '删除', icon: Delete02Icon },
+  { id: 'copy', label: '复制', icon: Copy01Icon, imageOnly: false },
+  {
+    id: 'separate-layers',
+    label: '分离图层',
+    icon: UngroupLayersIcon,
+    imageOnly: true,
+  },
+  {
+    id: 'front',
+    label: '置于顶层',
+    icon: LayerBringToFrontIcon,
+    imageOnly: false,
+  },
+  {
+    id: 'back',
+    label: '置于底层',
+    icon: LayerSendToBackIcon,
+    imageOnly: false,
+  },
+  { id: 'delete', label: '删除', icon: Delete02Icon, imageOnly: false },
 ] as const
 
 export function ElementToolbar() {
@@ -42,6 +61,11 @@ export function ElementToolbar() {
         return null
       }
 
+      const shape = editor.getShape(selectedIds[0])
+      if (!shape) return null
+
+      const isImage = shape.type === 'image'
+      const toolbarWidth = isImage ? IMAGE_TOOLBAR_WIDTH : TOOLBAR_WIDTH
       const bounds = editor.getSelectionRotatedScreenBounds()
       if (!bounds) return null
 
@@ -55,7 +79,7 @@ export function ElementToolbar() {
         : selectionBottom + TOOLBAR_GAP
       const maxLeft = Math.max(
         VIEWPORT_MARGIN,
-        viewport.width - TOOLBAR_WIDTH - VIEWPORT_MARGIN,
+        viewport.width - toolbarWidth - VIEWPORT_MARGIN,
       )
       const maxTop = Math.max(
         VIEWPORT_MARGIN,
@@ -64,9 +88,10 @@ export function ElementToolbar() {
 
       return {
         shapeId: selectedIds[0],
+        isImage,
         x: Math.min(
           Math.max(
-            bounds.center.x - viewport.minX - TOOLBAR_WIDTH / 2,
+            bounds.center.x - viewport.minX - toolbarWidth / 2,
             VIEWPORT_MARGIN,
           ),
           maxLeft,
@@ -110,21 +135,32 @@ export function ElementToolbar() {
     editor.focus()
   }
 
+  const visibleActions = actions.filter(
+    (action) => !action.imageOnly || placement.isImage,
+  )
+
   return (
     <div
       aria-label="元素操作"
-      className="pointer-events-auto absolute top-0 left-0 grid h-10 w-40 grid-cols-4 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10"
+      className={cn(
+        'pointer-events-auto absolute top-0 left-0 grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
+        placement.isImage ? 'w-50 grid-cols-5' : 'w-40 grid-cols-4',
+      )}
       onPointerDown={(event) => event.preventDefault()}
       ref={toolbarRef}
       role="toolbar"
     >
-      {actions.map((action) => (
+      {visibleActions.map((action) => (
         <Tooltip key={action.id}>
           <TooltipTrigger
             render={
               <Button
                 aria-label={action.label}
-                onClick={() => runAction(action.id)}
+                onClick={
+                  action.id === 'separate-layers'
+                    ? undefined
+                    : () => runAction(action.id)
+                }
                 size="icon-sm"
                 variant={action.id === 'delete' ? 'destructive' : 'ghost'}
               />
