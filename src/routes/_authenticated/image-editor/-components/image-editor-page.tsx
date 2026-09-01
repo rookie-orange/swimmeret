@@ -96,7 +96,7 @@ export function ImageEditorPage() {
   }, [])
 
   return (
-    <section className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 overflow-hidden bg-muted/40 p-2 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[auto_minmax(0,1fr)_auto]">
+    <section className="relative h-full min-h-0 overflow-hidden bg-background">
       <input
         accept="image/png,image/jpeg,image/webp"
         className="sr-only"
@@ -106,8 +106,8 @@ export function ImageEditorPage() {
         type="file"
       />
 
-      <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 sm:gap-3">
-        <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+      <div className="pointer-events-none absolute top-2 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:top-4 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
+        <header className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
           <Link
             aria-label="返回聊天"
             className={cn(
@@ -118,10 +118,6 @@ export function ImageEditorPage() {
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
           </Link>
-          <div className="hidden min-w-0 pr-2 sm:block">
-            <p className="truncate text-sm font-semibold">无限画布</p>
-            <p className="text-xs text-muted-foreground">当前会话</p>
-          </div>
         </header>
 
         <div className="min-w-0 flex-1 text-center">
@@ -141,7 +137,7 @@ export function ImageEditorPage() {
           ) : null}
         </div>
 
-        <div className="flex h-14 min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+        <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
           <HistoryControls editor={editor} />
           <Button
             className="hidden rounded-full xl:inline-flex"
@@ -162,7 +158,7 @@ export function ImageEditorPage() {
         </div>
       </div>
 
-      <main className="col-start-1 row-start-2 min-h-0 min-w-0">
+      <main className="absolute inset-0 min-h-0 min-w-0">
         <InfiniteCanvas onMount={handleMount} />
       </main>
 

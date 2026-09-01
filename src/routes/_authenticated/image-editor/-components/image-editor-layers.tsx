@@ -173,7 +173,7 @@ export function ImageEditorLayers({
   onAddImages,
 }: ImageEditorLayersProps) {
   return (
-    <aside className="col-start-2 row-span-3 row-start-1 hidden min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl shadow-foreground/5 backdrop-blur-xl lg:flex">
+    <aside className="absolute top-4 right-4 bottom-4 z-20 hidden w-72 min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl shadow-foreground/5 backdrop-blur-xl xl:flex">
       <div className="flex items-center justify-between px-4 py-3">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">

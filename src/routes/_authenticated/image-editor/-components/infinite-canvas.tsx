@@ -16,7 +16,7 @@ export const InfiniteCanvas = memo(function InfiniteCanvas({
   onMount,
 }: InfiniteCanvasProps) {
   return (
-    <div className="relative size-full overflow-hidden rounded-2xl border border-border bg-background shadow-2xl shadow-foreground/10">
+    <div className="relative size-full overflow-hidden bg-background">
       <Tldraw
         acceptedImageMimeTypes={['image/png', 'image/jpeg', 'image/webp']}
         components={canvasComponents}

@@ -132,7 +132,7 @@ export function ElementToolbar() {
           >
             <HugeiconsIcon icon={action.icon} strokeWidth={1.8} />
           </TooltipTrigger>
-          <TooltipContent>{action.label}</TooltipContent>
+          <TooltipContent sideOffset={10}>{action.label}</TooltipContent>
         </Tooltip>
       ))}
     </div>

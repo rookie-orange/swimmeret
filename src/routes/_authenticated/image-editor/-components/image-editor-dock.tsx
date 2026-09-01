@@ -45,8 +45,8 @@ export function ImageEditorDock({
   )
 
   return (
-    <div className="col-start-1 row-start-3 flex min-w-0 justify-center">
-      <div className="w-full max-w-xl rounded-3xl border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
+    <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-4 xl:right-80">
+      <div className="pointer-events-auto w-fit max-w-full rounded-3xl border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
         <div className="flex h-11 min-w-0 items-center gap-0.5 overflow-x-auto px-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
           {imageTools.map((tool) => (
             <Tooltip key={tool.id}>
@@ -95,7 +95,7 @@ export function ImageEditorDock({
               render={
                 <Button
                   aria-label="AI 助手"
-                  className="size-10 shrink-0 rounded-full text-primary"
+                  className="hidden size-10 shrink-0 rounded-full text-primary sm:inline-flex"
                   disabled
                   size="icon"
                   variant="ghost"
@@ -111,7 +111,7 @@ export function ImageEditorDock({
               render={
                 <Button
                   aria-label="更多工具"
-                  className="size-10 shrink-0 rounded-full text-muted-foreground"
+                  className="hidden size-10 shrink-0 rounded-full text-muted-foreground sm:inline-flex"
                   disabled
                   size="icon"
                   variant="ghost"
