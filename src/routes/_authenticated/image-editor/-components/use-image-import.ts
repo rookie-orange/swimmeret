@@ -129,25 +129,8 @@ export function useImageImport(editor: Editor | null) {
         URL.revokeObjectURL(managed.url)
         managedPreviews.delete(asset.id)
       })
-    const removeAfterShapeDelete =
-      editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
-        if (shape.type !== 'image' || !shape.props.assetId) return
-
-        const assetId = shape.props.assetId
-        const isStillUsed = editor
-          .getCurrentPageShapes()
-          .some(
-            (candidate) =>
-              candidate.type === 'image' && candidate.props.assetId === assetId,
-          )
-        if (!isStillUsed && editor.getAsset(assetId)) {
-          editor.deleteAssets([assetId])
-        }
-      })
-
     return () => {
       removeAfterAssetDelete()
-      removeAfterShapeDelete()
       for (const managed of managedPreviews.values()) {
         if (managed.url) URL.revokeObjectURL(managed.url)
       }

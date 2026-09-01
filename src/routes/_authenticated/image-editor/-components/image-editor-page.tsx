@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowLeft01Icon,
@@ -20,7 +20,10 @@ import { cn } from '@/lib/utils'
 import { ImageEditorDock } from './image-editor-dock'
 import { ImageEditorLayers } from './image-editor-layers'
 import { InfiniteCanvas } from './infinite-canvas'
+import { LayerDecompositionDialog } from './layer-decomposition-dialog'
+import { LayerDecompositionProvider } from './layer-decomposition-provider'
 import { useImageImport } from './use-image-import'
+import { useLayerDecomposition } from './use-layer-decomposition'
 
 function HistoryControls({ editor }: { editor: Editor | null }) {
   const canUndo = useValue(
@@ -84,6 +87,19 @@ export function ImageEditorPage() {
   const [editor, setEditor] = useState<Editor | null>(null)
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
     useImageImport(editor)
+  const layerDecomposition = useLayerDecomposition(editor)
+  const layerDecompositionContext = useMemo(
+    () => ({
+      isOpen: layerDecomposition.dialog.open,
+      isPending: layerDecomposition.isPending,
+      openForShape: layerDecomposition.openForShape,
+    }),
+    [
+      layerDecomposition.dialog.open,
+      layerDecomposition.isPending,
+      layerDecomposition.openForShape,
+    ],
+  )
   const handleMount = useCallback((mountedEditor: Editor) => {
     mountedEditor.centerOnPoint({ x: 0, y: 0 })
     setEditor(mountedEditor)
@@ -96,78 +112,81 @@ export function ImageEditorPage() {
   }, [])
 
   return (
-    <section className="relative h-full min-h-0 overflow-hidden bg-background">
-      <input
-        accept="image/png,image/jpeg,image/webp"
-        className="sr-only"
-        multiple
-        onChange={handleFileChange}
-        ref={inputRef}
-        type="file"
-      />
+    <LayerDecompositionProvider value={layerDecompositionContext}>
+      <section className="relative h-full min-h-0 overflow-hidden bg-background">
+        <input
+          accept="image/png,image/jpeg,image/webp"
+          className="sr-only"
+          multiple
+          onChange={handleFileChange}
+          ref={inputRef}
+          type="file"
+        />
 
-      <div className="pointer-events-none absolute top-2 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:top-4 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
-        <header className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
-          <Link
-            aria-label="返回聊天"
-            className={cn(
-              buttonVariants({ size: 'icon-sm', variant: 'ghost' }),
-              'shrink-0 rounded-full text-muted-foreground',
-            )}
-            to="/"
-          >
-            <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
-          </Link>
-        </header>
-
-        <div className="min-w-0 flex-1 text-center">
-          {isImporting ? (
-            <p
-              aria-live="polite"
-              className="truncate text-xs text-muted-foreground"
-              role="status"
+        <div className="pointer-events-none absolute top-2 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:top-4 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
+          <header className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+            <Link
+              aria-label="返回聊天"
+              className={cn(
+                buttonVariants({ size: 'icon-sm', variant: 'ghost' }),
+                'shrink-0 rounded-full text-muted-foreground',
+              )}
+              to="/"
             >
-              正在导入图片…
-            </p>
-          ) : null}
-          {error ? (
-            <p className="line-clamp-2 text-xs text-destructive" role="alert">
-              {error}
-            </p>
-          ) : null}
+              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
+            </Link>
+          </header>
+
+          <div className="min-w-0 flex-1 text-center">
+            {isImporting ? (
+              <p
+                aria-live="polite"
+                className="truncate text-xs text-muted-foreground"
+                role="status"
+              >
+                正在导入图片…
+              </p>
+            ) : null}
+            {error ? (
+              <p className="line-clamp-2 text-xs text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+            <HistoryControls editor={editor} />
+            <Button
+              className="hidden rounded-full xl:inline-flex"
+              disabled
+              size="sm"
+              variant="ghost"
+            >
+              <HugeiconsIcon
+                data-icon="inline-start"
+                icon={ViewIcon}
+                strokeWidth={1.8}
+              />
+              预览
+            </Button>
+            <Button className="rounded-full" disabled size="sm">
+              导出
+            </Button>
+          </div>
         </div>
 
-        <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
-          <HistoryControls editor={editor} />
-          <Button
-            className="hidden rounded-full xl:inline-flex"
-            disabled
-            size="sm"
-            variant="ghost"
-          >
-            <HugeiconsIcon
-              data-icon="inline-start"
-              icon={ViewIcon}
-              strokeWidth={1.8}
-            />
-            预览
-          </Button>
-          <Button className="rounded-full" disabled size="sm">
-            导出
-          </Button>
-        </div>
-      </div>
+        <main className="absolute inset-0 min-h-0 min-w-0">
+          <InfiniteCanvas onMount={handleMount} />
+        </main>
 
-      <main className="absolute inset-0 min-h-0 min-w-0">
-        <InfiniteCanvas onMount={handleMount} />
-      </main>
-
-      <ImageEditorLayers editor={editor} onAddImages={openFileDialog} />
-      <ImageEditorDock
-        editor={editor}
-        isImporting={isImporting}
-        onAddImages={openFileDialog}
-      />
-    </section>
+        <ImageEditorLayers editor={editor} onAddImages={openFileDialog} />
+        <ImageEditorDock
+          editor={editor}
+          isImporting={isImporting}
+          onAddImages={openFileDialog}
+        />
+        <LayerDecompositionDialog {...layerDecomposition.dialog} />
+      </section>
+    </LayerDecompositionProvider>
   )
 }

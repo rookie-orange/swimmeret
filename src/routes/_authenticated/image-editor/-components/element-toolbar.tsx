@@ -17,6 +17,9 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+import { useLayerDecompositionContext } from './layer-decomposition-state'
+
+// 与下方 Tailwind 固定宽高保持同步，用于精确约束画布内定位。
 const TOOLBAR_WIDTH = 160
 const IMAGE_TOOLBAR_WIDTH = 200
 const TOOLBAR_HEIGHT = 40
@@ -48,6 +51,7 @@ const actions = [
 
 export function ElementToolbar() {
   const editor = useEditor()
+  const { isOpen, isPending, openForShape } = useLayerDecompositionContext()
   const toolbarRef = useRef<HTMLDivElement>(null)
   const placement = useValue(
     'image editor element toolbar placement',
@@ -109,11 +113,16 @@ export function ElementToolbar() {
     toolbarRef.current.style.transform = `translate3d(${placement.x}px, ${placement.y}px, 0)`
   }, [placement])
 
-  if (!placement) return null
+  if (!placement || isOpen) return null
 
   const runAction = (action: (typeof actions)[number]['id']) => {
     const shapeId = placement.shapeId
     if (!editor.getShape(shapeId)) return
+
+    if (action === 'separate-layers') {
+      openForShape(shapeId)
+      return
+    }
 
     editor.markHistoryStoppingPoint(`element toolbar ${action}`)
 
@@ -156,11 +165,8 @@ export function ElementToolbar() {
             render={
               <Button
                 aria-label={action.label}
-                onClick={
-                  action.id === 'separate-layers'
-                    ? undefined
-                    : () => runAction(action.id)
-                }
+                disabled={action.id === 'separate-layers' && isPending}
+                onClick={() => runAction(action.id)}
                 size="icon-sm"
                 variant={action.id === 'delete' ? 'destructive' : 'ghost'}
               />

@@ -5,9 +5,16 @@ import {
   PencilEdit01Icon,
   ShapesIcon,
   TextIcon,
+  UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { computed, type Editor, type TLShapeId, useValue } from 'tldraw'
+import {
+  computed,
+  type Editor,
+  type TLShape,
+  type TLShapeId,
+  useValue,
+} from 'tldraw'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -16,6 +23,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+
+import { useLayerDecompositionContext } from './layer-decomposition-state'
 
 interface ImageEditorLayersProps {
   editor: Editor | null
@@ -26,6 +35,10 @@ interface LayerItem {
   id: TLShapeId
   name: string
   type: string
+}
+
+function isDecompositionGroup(shape: TLShape) {
+  return shape.type === 'group' && shape.meta.decompositionGroup === true
 }
 
 function getLayerType(shapeType: string) {
@@ -77,6 +90,7 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
 
           for (let index = shapes.length - 1; index >= 0; index -= 1) {
             const shape = shapes[index]
+            if (isDecompositionGroup(shape)) continue
             const type = getLayerType(shape.type)
             let name = type
 
@@ -159,12 +173,47 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
 function LayerCount({ editor }: { editor: Editor }) {
   const count = useValue(
     'image editor layer count',
-    () => editor.getCurrentPageShapeIds().size,
+    () =>
+      editor
+        .getCurrentPageShapes()
+        .filter((shape) => !isDecompositionGroup(shape)).length,
     [editor],
   )
 
   return (
     <p className="mt-1 text-xs text-muted-foreground">{count} 个画布元素</p>
+  )
+}
+
+function LayerDecompositionAction({ editor }: { editor: Editor }) {
+  const { isPending, openForShape } = useLayerDecompositionContext()
+  const selectedImageId = useValue(
+    'image editor selected image for decomposition',
+    () => {
+      const selectedIds = editor.getSelectedShapeIds()
+      if (selectedIds.length !== 1) return null
+      const shape = editor.getShape(selectedIds[0])
+      return shape?.type === 'image' ? shape.id : null
+    },
+    [editor],
+  )
+
+  return (
+    <Button
+      className="w-full rounded-xl"
+      disabled={!selectedImageId || isPending}
+      onClick={() => {
+        if (selectedImageId) openForShape(selectedImageId)
+      }}
+      size="sm"
+    >
+      <HugeiconsIcon
+        data-icon="inline-start"
+        icon={UngroupLayersIcon}
+        strokeWidth={1.8}
+      />
+      {isPending ? '正在分离' : '分离当前图层'}
+    </Button>
   )
 }
 
@@ -215,12 +264,15 @@ export function ImageEditorLayers({
 
       <div className="mt-auto border-t border-border bg-primary/10 p-4">
         <p className="text-sm font-medium">AI 助手</p>
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          智能抠图与扩图将在后续版本开放。
-        </p>
-        <Button className="mt-3 w-full rounded-xl" disabled size="sm">
-          分离当前图层
-        </Button>
+        <div className="mt-3">
+          {editor ? (
+            <LayerDecompositionAction editor={editor} />
+          ) : (
+            <Button className="w-full rounded-xl" disabled size="sm">
+              分离当前图层
+            </Button>
+          )}
+        </div>
       </div>
     </aside>
   )
