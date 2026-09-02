@@ -5,19 +5,21 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use futures_util::{stream::FuturesUnordered, StreamExt};
-use reqwest::{redirect, Client, StatusCode, Url};
+use reqwest::{header::CONTENT_TYPE, redirect, Client, StatusCode, Url};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tauri::{
     ipc::{Channel, InvokeBody, Request, Response},
     State,
 };
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Semaphore;
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 const ARK_ENDPOINT: &str = "https://ark.cn-beijing.volces.com/api/v3/images/generations";
@@ -159,7 +161,9 @@ struct CachedAsset {
 
 struct StagedInput {
     bytes: Vec<u8>,
+    height: u32,
     mime_type: &'static str,
+    width: u32,
 }
 
 #[derive(Serialize)]
@@ -203,18 +207,109 @@ struct DownloadedAsset {
     cached: CachedAsset,
 }
 
+fn sha256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+fn network_error_kind(error: &reqwest::Error) -> &'static str {
+    if error.is_timeout() {
+        "timeout"
+    } else if error.is_connect() {
+        "connect"
+    } else if error.is_body() {
+        "body"
+    } else if error.is_decode() {
+        "decode"
+    } else {
+        "request"
+    }
+}
+
+fn log_identifier(value: &str) -> String {
+    const MAX_IDENTIFIER_CHARS: usize = 64;
+    let mut identifier = value.chars().take(MAX_IDENTIFIER_CHARS).collect::<String>();
+    if value.chars().count() > MAX_IDENTIFIER_CHARS {
+        identifier.push_str("...");
+    }
+    identifier
+}
+
+fn log_json_value(value: &serde_json::Value) -> String {
+    const MAX_LOG_CHARS: usize = 4_096;
+    let serialized = value.to_string();
+    let mut output = serialized.chars().take(MAX_LOG_CHARS).collect::<String>();
+    if serialized.chars().count() > MAX_LOG_CHARS {
+        output.push_str("...");
+    }
+    output
+}
+
+#[tauri::command]
+pub fn log_image_diagnostic(event: String, details: serde_json::Value) {
+    info!(
+        event = %log_identifier(&event),
+        details = %log_json_value(&details),
+        "frontend image diagnostic",
+    );
+}
+
+fn ark_error_code(body: &[u8]) -> Option<String> {
+    serde_json::from_slice::<serde_json::Value>(body)
+        .ok()
+        .and_then(|value| {
+            value
+                .pointer("/error/code")
+                .or_else(|| value.get("code"))
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string)
+        })
+}
+
+fn upstream_request_id(response: &reqwest::Response) -> Option<String> {
+    ["x-request-id", "x-tt-logid", "x-log-id"]
+        .iter()
+        .find_map(|name| {
+            response
+                .headers()
+                .get(*name)
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_string)
+        })
+}
+
+fn output_size_label(size: OutputSize) -> &'static str {
+    match size {
+        OutputSize::Auto => "auto",
+        OutputSize::OneK => "1K",
+        OutputSize::OneAndHalfK => "1.5K",
+        OutputSize::TwoK => "2K",
+    }
+}
+
 #[tauri::command]
 pub fn stage_layer_source(
     request: Request<'_>,
     state: State<'_, DecompositionState>,
 ) -> Result<StagedSource, CommandError> {
     let InvokeBody::Raw(bytes) = request.body() else {
+        warn!("stage_layer_source received a non-raw IPC body");
         return Err(CommandError::new(
             "invalid_input",
             "图层分离需要 PNG 或 JPEG 二进制输入",
         ));
     };
-    let (width, height, mime_type) = validate_input_image(bytes, MAX_INPUT_BYTES, true)?;
+    let (width, height, mime_type) = match validate_input_image(bytes, MAX_INPUT_BYTES, true) {
+        Ok(value) => value,
+        Err(error) => {
+            warn!(
+                bytes = bytes.len(),
+                code = error.code,
+                message = %error.message,
+                "stage_layer_source rejected input",
+            );
+            return Err(error);
+        }
+    };
     let source_id = Uuid::new_v4().to_string();
     let mut staged_sources = state
         .staged_sources
@@ -227,8 +322,20 @@ pub fn stage_layer_source(
         source_id.clone(),
         StagedInput {
             bytes: bytes.clone(),
+            height,
             mime_type,
+            width,
         },
+    );
+
+    info!(
+        source_id = %source_id,
+        mime_type,
+        width,
+        height,
+        bytes = bytes.len(),
+        sha256 = %sha256_hex(bytes),
+        "staged layer source",
     );
 
     Ok(StagedSource {
@@ -243,11 +350,14 @@ pub fn discard_layer_source(
     source_id: String,
     state: State<'_, DecompositionState>,
 ) -> Result<(), CommandError> {
-    state
+    let removed = state
         .staged_sources
         .lock()
         .map_err(|_| CommandError::internal("无法访问暂存图片"))?
-        .remove(&source_id);
+        .remove(&source_id)
+        .is_some();
+
+    debug!(source_id = %log_identifier(&source_id), removed, "discarded staged layer source");
 
     Ok(())
 }
@@ -258,71 +368,245 @@ pub async fn decompose_image(
     on_progress: Channel<DecompositionProgress>,
     state: State<'_, DecompositionState>,
 ) -> Result<DecompositionManifest, CommandError> {
-    let source = state
+    let request_id = Uuid::new_v4().to_string();
+    let started_at = Instant::now();
+    let source = match state
         .staged_sources
         .lock()
         .map_err(|_| CommandError::internal("无法访问暂存图片"))?
         .remove(&request.source_id)
-        .ok_or_else(|| CommandError::new("source_expired", "待分离图片已失效，请重试"))?;
-    let _permit = state
-        .task_gate
-        .acquire()
-        .await
-        .map_err(|_| CommandError::internal("图层分离服务已关闭"))?;
-    let api_key = std::env::var("ARK_API_KEY")
+    {
+        Some(source) => source,
+        None => {
+            warn!(
+                request_id = %request_id,
+                source_id = %log_identifier(&request.source_id),
+                "decomposition source is missing or expired",
+            );
+            return Err(CommandError::new(
+                "source_expired",
+                "待分离图片已失效，请重试",
+            ));
+        }
+    };
+    let size = output_size_label(request.size);
+    let source_sha256 = sha256_hex(&source.bytes);
+    let _permit = match state.task_gate.acquire().await {
+        Ok(permit) => permit,
+        Err(_) => {
+            error!(
+                request_id = %request_id,
+                "decomposition task gate is unavailable",
+            );
+            return Err(CommandError::internal("图层分离服务已关闭"));
+        }
+    };
+    let api_key = match std::env::var("ARK_API_KEY")
         .ok()
         .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| {
-            CommandError::new(
+    {
+        Some(api_key) => api_key,
+        None => {
+            error!(
+                request_id = %request_id,
+                "ARK_API_KEY is missing or empty",
+            );
+            return Err(CommandError::new(
                 "missing_api_key",
                 "未配置 ARK_API_KEY，请在启动应用前设置火山引擎 API Key",
-            )
-        })?;
-    let prompt = normalize_prompt(request.prompt)?;
+            ));
+        }
+    };
+    let prompt = match normalize_prompt(request.prompt) {
+        Ok(prompt) => prompt,
+        Err(error) => {
+            warn!(
+                request_id = %request_id,
+                code = error.code,
+                message = %error.message,
+                "decomposition prompt rejected",
+            );
+            return Err(error);
+        }
+    };
+    let image_data_uri_prefix = format!("data:{};base64,", source.mime_type);
+    let image = format!("{}{}", image_data_uri_prefix, BASE64.encode(&source.bytes));
+    let image_data_uri_chars = image.len();
+    let base64_chars = image_data_uri_chars - image_data_uri_prefix.len();
+    let ark_request = ArkRequest {
+        model: ARK_MODEL,
+        image,
+        size: request.size,
+        layer_decomposition: true,
+        watermark: false,
+        response_format: "url",
+        output_format: "png",
+        prompt,
+    };
+    info!(
+        request_id = %request_id,
+        source_id = %log_identifier(&request.source_id),
+        endpoint = ARK_ENDPOINT,
+        model = ARK_MODEL,
+        mime_type = source.mime_type,
+        width = source.width,
+        height = source.height,
+        bytes = source.bytes.len(),
+        sha256 = %source_sha256,
+        base64_chars,
+        image_data_uri_chars,
+        image_data_uri_prefix,
+        size,
+        layer_decomposition = true,
+        output_format = "png",
+        response_format = "url",
+        watermark = false,
+        prompt_present = ark_request.prompt.is_some(),
+        prompt_chars = ark_request
+            .prompt
+            .as_ref()
+            .map_or(0, |value| value.chars().count()),
+        "starting layer decomposition",
+    );
     let _ = on_progress.send(DecompositionProgress::Generating);
-    let response = state
+    let response = match state
         .client
         .post(ARK_ENDPOINT)
         .bearer_auth(api_key)
-        .json(&ArkRequest {
-            model: ARK_MODEL,
-            image: format!(
-                "data:{};base64,{}",
-                source.mime_type,
-                BASE64.encode(&source.bytes)
-            ),
-            size: request.size,
-            layer_decomposition: true,
-            watermark: false,
-            response_format: "url",
-            output_format: "png",
-            prompt,
-        })
+        .json(&ark_request)
         .send()
         .await
-        .map_err(map_network_error)?;
+    {
+        Ok(response) => response,
+        Err(error) => {
+            let network_kind = network_error_kind(&error);
+            let mapped = map_network_error(error);
+            error!(
+                request_id = %request_id,
+                network_kind,
+                code = mapped.code,
+                message = %mapped.message,
+                elapsed_ms = started_at.elapsed().as_millis() as u64,
+                "Ark request failed before receiving a response",
+            );
+            return Err(mapped);
+        }
+    };
     let status = response.status();
-    let body = response.bytes().await.map_err(map_network_error)?;
+    let ark_request_id = upstream_request_id(&response);
+    let response_content_type = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string);
+    let body = match response.bytes().await {
+        Ok(body) => body,
+        Err(error) => {
+            let network_kind = network_error_kind(&error);
+            let mapped = map_network_error(error);
+            error!(
+                request_id = %request_id,
+                ark_request_id = ?ark_request_id,
+                network_kind,
+                code = mapped.code,
+                message = %mapped.message,
+                elapsed_ms = started_at.elapsed().as_millis() as u64,
+                "failed to read Ark response body",
+            );
+            return Err(mapped);
+        }
+    };
+
+    info!(
+        request_id = %request_id,
+        ark_request_id = ?ark_request_id,
+        http_status = status.as_u16(),
+        content_type = ?response_content_type,
+        response_bytes = body.len(),
+        elapsed_ms = started_at.elapsed().as_millis() as u64,
+        "received Ark response",
+    );
 
     if !status.is_success() {
-        return Err(map_ark_error(status, &body));
+        let mapped = map_ark_error(status, &body);
+        let ark_error_code = ark_error_code(&body);
+        error!(
+            request_id = %request_id,
+            ark_request_id = ?ark_request_id,
+            ark_error_code = ?ark_error_code,
+            code = mapped.code,
+            message = %mapped.message,
+            response_bytes = body.len(),
+            response_sha256 = %sha256_hex(&body),
+            "Ark rejected layer decomposition request",
+        );
+        return Err(mapped);
     }
 
-    let ark_response: ArkResponse = serde_json::from_slice(&body)
-        .map_err(|_| CommandError::new("invalid_response", "模型返回了无法解析的数据"))?;
-    let assets = normalize_ark_assets(ark_response.data)?;
+    let ark_response: ArkResponse = match serde_json::from_slice(&body) {
+        Ok(response) => response,
+        Err(parse_error) => {
+            error!(
+                request_id = %request_id,
+                ark_request_id = ?ark_request_id,
+                error = %parse_error,
+                response_bytes = body.len(),
+                response_sha256 = %sha256_hex(&body),
+                "failed to parse Ark response JSON",
+            );
+            return Err(CommandError::new(
+                "invalid_response",
+                "模型返回了无法解析的数据",
+            ));
+        }
+    };
+    let assets = match normalize_ark_assets(ark_response.data) {
+        Ok(assets) => assets,
+        Err(validation_error) => {
+            error!(
+                request_id = %request_id,
+                ark_request_id = ?ark_request_id,
+                code = validation_error.code,
+                message = %validation_error.message,
+                "Ark response contained invalid layer metadata",
+            );
+            return Err(validation_error);
+        }
+    };
+    info!(
+        request_id = %request_id,
+        ark_request_id = ?ark_request_id,
+        model = ark_response.model.as_deref().unwrap_or(ARK_MODEL),
+        layer_count = assets.len(),
+        z_indexes = ?assets.iter().map(|asset| asset.z_index).collect::<Vec<_>>(),
+        "validated Ark layer manifest",
+    );
     let job_id = Uuid::new_v4().to_string();
     let job_directory: PathBuf = state.cache_root.join(&job_id);
     tokio::fs::create_dir_all(&job_directory)
         .await
         .map_err(|_| CommandError::internal("无法创建图层缓存目录"))?;
 
-    let download_result =
-        download_assets(&state.client, assets, &job_directory, &on_progress).await;
+    let download_result = download_assets(
+        &state.client,
+        assets,
+        &job_directory,
+        &on_progress,
+        &request_id,
+    )
+    .await;
     let downloaded = match download_result {
         Ok(downloaded) => downloaded,
         Err(error) => {
             let _ = tokio::fs::remove_dir_all(&job_directory).await;
+            error!(
+                request_id = %request_id,
+                job_id = %job_id,
+                code = error.code,
+                message = %error.message,
+                elapsed_ms = started_at.elapsed().as_millis() as u64,
+                "layer asset download failed",
+            );
             return Err(error);
         }
     };
@@ -345,6 +629,17 @@ pub async fn decompose_image(
                 assets: cached_assets,
             },
         );
+
+    info!(
+        request_id = %request_id,
+        ark_request_id = ?ark_request_id,
+        job_id = %job_id,
+        layer_count = manifest_assets.len(),
+        generated_images = ?ark_response.usage.as_ref().and_then(|usage| usage.generated_images),
+        output_tokens = ?ark_response.usage.as_ref().and_then(|usage| usage.output_tokens),
+        elapsed_ms = started_at.elapsed().as_millis() as u64,
+        "layer decomposition completed",
+    );
 
     Ok(DecompositionManifest {
         job_id,
@@ -376,6 +671,13 @@ pub async fn read_decomposition_asset(
         .await
         .map_err(|_| CommandError::new("asset_expired", "无法读取生成图层，请重新分离"))?;
 
+    debug!(
+        job_id = %job_id,
+        asset_id = %asset_id,
+        bytes = bytes.len(),
+        "read cached decomposition asset",
+    );
+
     Ok(Response::new(bytes))
 }
 
@@ -390,9 +692,13 @@ pub async fn cleanup_decomposition_job(
         .map_err(|_| CommandError::internal("无法访问图层缓存"))?
         .remove(&job_id);
     if let Some(job) = job {
+        let asset_count = job.assets.len();
         tokio::fs::remove_dir_all(job.directory)
             .await
             .map_err(|_| CommandError::internal("无法清理图层缓存"))?;
+        debug!(job_id = %job_id, asset_count, "cleaned decomposition job cache");
+    } else {
+        debug!(job_id = %job_id, "decomposition job cache already absent");
     }
 
     Ok(())
@@ -403,6 +709,7 @@ async fn download_assets(
     assets: Vec<ArkAsset>,
     directory: &std::path::Path,
     on_progress: &Channel<DecompositionProgress>,
+    request_id: &str,
 ) -> Result<Vec<DownloadedAsset>, CommandError> {
     let total = assets.len();
     let mut pending = FuturesUnordered::new();
@@ -414,12 +721,13 @@ async fn download_assets(
         let directory = directory.to_path_buf();
         let download_gate = download_gate.clone();
         let downloaded_bytes = downloaded_bytes.clone();
+        let request_id = request_id.to_string();
         pending.push(async move {
             let _permit = download_gate
                 .acquire_owned()
                 .await
                 .map_err(|_| CommandError::internal("图层下载服务已关闭"))?;
-            download_asset(&client, asset, &directory, &downloaded_bytes).await
+            download_asset(&client, asset, &directory, &downloaded_bytes, &request_id).await
         });
     }
 
@@ -440,17 +748,42 @@ async fn download_asset(
     asset: ArkAsset,
     directory: &std::path::Path,
     downloaded_bytes: &AtomicUsize,
+    request_id: &str,
 ) -> Result<DownloadedAsset, CommandError> {
+    let started_at = Instant::now();
+    let z_index = asset.z_index;
     let url = asset
         .url
         .as_deref()
         .ok_or_else(|| CommandError::new("invalid_response", "模型结果缺少下载地址"))?;
     let parsed_url = validate_download_url(url)?;
-    let mut response = client
-        .get(parsed_url)
-        .send()
-        .await
-        .map_err(map_network_error)?;
+    let download_host = parsed_url.host_str().unwrap_or("unknown").to_string();
+    let mut response = match client.get(parsed_url).send().await {
+        Ok(response) => response,
+        Err(error) => {
+            let network_kind = network_error_kind(&error);
+            let mapped = map_network_error(error);
+            error!(
+                request_id,
+                z_index,
+                network_kind,
+                code = mapped.code,
+                message = %mapped.message,
+                "layer download request failed",
+            );
+            return Err(mapped);
+        }
+    };
+    let http_status = response.status();
+    let content_length = response.content_length();
+    debug!(
+        request_id,
+        z_index,
+        host = %download_host,
+        http_status = http_status.as_u16(),
+        content_length = ?content_length,
+        "received layer download response",
+    );
     if !response.status().is_success() {
         return Err(CommandError::new(
             "download_failed",
@@ -477,7 +810,22 @@ async fn download_asset(
         let mut header = Vec::with_capacity(24);
         let mut received = 0_usize;
 
-        while let Some(chunk) = response.chunk().await.map_err(map_network_error)? {
+        while let Some(chunk) = match response.chunk().await {
+            Ok(chunk) => chunk,
+            Err(error) => {
+                let network_kind = network_error_kind(&error);
+                let mapped = map_network_error(error);
+                error!(
+                    request_id,
+                    z_index,
+                    network_kind,
+                    code = mapped.code,
+                    message = %mapped.message,
+                    "layer download response read failed",
+                );
+                return Err(mapped);
+            }
+        } {
             received = received
                 .checked_add(chunk.len())
                 .ok_or_else(|| CommandError::new("download_too_large", "生成图层大小无效"))?;
@@ -501,16 +849,28 @@ async fn download_asset(
             .await
             .map_err(|_| CommandError::internal("无法缓存生成图层"))?;
 
-        validate_png(&header, MAX_OUTPUT_BYTES, false)
+        let (width, height) = validate_png(&header, MAX_OUTPUT_BYTES, false)?;
+        Ok::<_, CommandError>((width, height, received))
     }
     .await;
-    let (width, height) = match write_result {
+    let (width, height, received) = match write_result {
         Ok(dimensions) => dimensions,
         Err(error) => {
             let _ = tokio::fs::remove_file(&path).await;
             return Err(error);
         }
     };
+
+    info!(
+        request_id,
+        asset_id = %asset_id,
+        z_index,
+        width,
+        height,
+        bytes = received,
+        elapsed_ms = started_at.elapsed().as_millis() as u64,
+        "cached generated layer",
+    );
 
     Ok(DownloadedAsset {
         manifest: ManifestAsset {
@@ -805,10 +1165,12 @@ fn validate_bounding_box(
 }
 
 fn map_network_error(error: reqwest::Error) -> CommandError {
-    if error.is_timeout() {
-        CommandError::new("timeout", "图层分离请求超时，请稍后重试")
-    } else {
-        CommandError::new("network", format!("网络请求失败：{error}"))
+    match network_error_kind(&error) {
+        "timeout" => CommandError::new("timeout", "图层分离请求超时，请稍后重试"),
+        "connect" => CommandError::new("network", "无法连接火山引擎服务，请检查网络后重试"),
+        "body" => CommandError::new("network", "读取火山引擎响应失败，请稍后重试"),
+        "decode" => CommandError::new("network", "解析火山引擎响应失败，请稍后重试"),
+        _ => CommandError::new("network", "网络请求失败，请稍后重试"),
     }
 }
 

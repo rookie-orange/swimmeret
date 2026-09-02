@@ -20,7 +20,6 @@ import {
   readDecompositionAsset,
   stageLayerSource,
   type LayerDecompositionManifest,
-  type LayerResolution,
 } from '@/lib/layer-decomposition'
 
 import {
@@ -28,14 +27,11 @@ import {
   getLayerCanvasPlacement,
   type LayerCanvasBounds,
 } from './layer-decomposition-utils'
+import { inspectImageBlob, logImageDiagnostic } from '@/lib/image-diagnostics'
+import { registerLocalAsset, releaseLocalAsset } from '@/lib/local-asset-store'
 
 interface ManagedLayerPreview {
   url: string
-}
-
-interface DecompositionOptions {
-  prompt: string
-  size: LayerResolution
 }
 
 interface PreparedLayer {
@@ -55,7 +51,6 @@ function createLayerName(
 }
 
 async function prepareLayers(
-  editor: Editor,
   manifest: LayerDecompositionManifest,
   sourceBounds: LayerCanvasBounds,
   parentId: TLParentId,
@@ -88,16 +83,19 @@ async function prepareLayers(
           isAnimated: false,
           mimeType: file.type,
           name,
+          // 图层也要有正式 src，toImage() 才能通过 asset store 解析到真实像素。
           src: null,
           w: item.width,
         },
         meta: {
-          decompositionDescription: item.description ?? undefined,
+          ...(item.description == null
+            ? {}
+            : { decompositionDescription: item.description }),
           decompositionZIndex: item.zIndex,
         },
       }) as TLImageAsset
-      const previewUrl = editor.createTemporaryAssetPreview(asset.id, file)
-      if (!previewUrl) throw new Error('无法创建生成图层的画布预览')
+      asset.props.src = asset.id
+      const previewUrl = registerLocalAsset(asset.id, file)
       registerPreview(asset.id, previewUrl)
       createdAssetIds.push(asset.id)
 
@@ -137,7 +135,6 @@ export function useLayerDecomposition(editor: Editor | null) {
   const [error, setError] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
-  const [shapeId, setShapeId] = useState<TLShapeId | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const managedPreviewsRef = useRef(new Map<TLAssetId, ManagedLayerPreview>())
   const mountedRef = useRef(true)
@@ -149,8 +146,7 @@ export function useLayerDecomposition(editor: Editor | null) {
   }, [editor])
 
   const unregisterPreview = useCallback((assetId: TLAssetId) => {
-    const preview = managedPreviewsRef.current.get(assetId)
-    if (preview) URL.revokeObjectURL(preview.url)
+    releaseLocalAsset(assetId)
     managedPreviewsRef.current.delete(assetId)
   }, [])
 
@@ -168,50 +164,28 @@ export function useLayerDecomposition(editor: Editor | null) {
       editor.sideEffects.registerAfterDeleteHandler('asset', (asset) => {
         const managed = managedPreviews.get(asset.id)
         if (!managed) return
-        URL.revokeObjectURL(managed.url)
+        releaseLocalAsset(asset.id)
         managedPreviews.delete(asset.id)
       })
 
     return () => {
       removeAfterAssetDelete()
-      for (const managed of managedPreviews.values()) {
-        URL.revokeObjectURL(managed.url)
+      for (const assetId of managedPreviews.keys()) {
+        releaseLocalAsset(assetId)
       }
       managedPreviews.clear()
     }
   }, [editor])
 
-  const openForShape = useCallback(
-    (nextShapeId: TLShapeId) => {
+  const startForShape = useCallback(
+    async (nextShapeId: TLShapeId) => {
       if (!editor || pendingRef.current) return
-      const shape = editor.getShape(nextShapeId)
-      if (!shape || shape.type !== 'image') return
-
-      setError(null)
-      setShapeId(shape.id)
-      setIsOpen(true)
-    },
-    [editor],
-  )
-
-  const onOpenChange = useCallback((open: boolean) => {
-    if (pendingRef.current) return
-    setIsOpen(open)
-    if (!open) {
-      setError(null)
-      setShapeId(null)
-      setStatus(null)
-    }
-  }, [])
-
-  const submit = useCallback(
-    async ({ prompt, size }: DecompositionOptions) => {
-      if (!editor || !shapeId || pendingRef.current) return
-      const sourceShape = editor.getShape<TLImageShape>(shapeId)
+      const sourceShape = editor.getShape<TLImageShape>(nextShapeId)
       if (!sourceShape || sourceShape.type !== 'image') {
         setError('待分离图片已被删除')
         return
       }
+      if (sourceShape.meta.decompositionPending === true) return
       const pageBounds = editor.getShapePageBounds(sourceShape)
       if (!pageBounds) {
         setError('无法读取当前图片的位置')
@@ -220,15 +194,49 @@ export function useLayerDecomposition(editor: Editor | null) {
 
       pendingRef.current = true
       setError(null)
+      setIsOpen(true)
       setIsPending(true)
       setStatus('正在准备图片')
       let jobId: string | null = null
       let stagedSourceId: string | null = null
+      let duplicateShapeId: TLShapeId | null = null
 
       const isEditorActive = () =>
         mountedRef.current && editorRef.current === editor
 
       try {
+        const shapeIdsBeforeDuplicate = new Set(
+          editor.getCurrentPageShapes().map((shape) => shape.id),
+        )
+        editor.markHistoryStoppingPoint('start image decomposition')
+        editor.run(() => {
+          editor.duplicateShapes([sourceShape.id], {
+            x: pageBounds.width + 48,
+            y: 0,
+          })
+          const duplicate =
+            editor
+              .getSelectedShapeIds()
+              .map((shapeId) => editor.getShape(shapeId))
+              .find((shape) => shape?.id !== sourceShape.id) ??
+            editor
+              .getCurrentPageShapes()
+              .find((shape) => !shapeIdsBeforeDuplicate.has(shape.id))
+          if (!duplicate || duplicate.type !== 'image') {
+            throw new Error('无法创建分离结果副本')
+          }
+          duplicateShapeId = duplicate.id
+          editor.updateShape<TLImageShape>({
+            id: duplicate.id,
+            type: 'image',
+            meta: {
+              ...duplicate.meta,
+              decompositionPending: true,
+            },
+          })
+          editor.select(duplicate.id)
+        })
+
         const sourceAsset = sourceShape.props.assetId
           ? editor.getAsset(sourceShape.props.assetId)
           : null
@@ -239,12 +247,38 @@ export function useLayerDecomposition(editor: Editor | null) {
                 sourceAsset.props.h / pageBounds.height,
               )
             : 1
-        const exportFormat =
-          sourceAsset?.type === 'image' &&
-          sourceAsset.props.mimeType === 'image/jpeg'
-            ? 'jpeg'
-            : 'png'
+        const exportFormat = 'png'
         const exportScale = calculateLayerExportScale(pageBounds, naturalScale)
+        logImageDiagnostic('tldraw-decomposition-input', {
+          shapeId: sourceShape.id,
+          assetId: sourceShape.props.assetId,
+          assetMimeType:
+            sourceAsset?.type === 'image' ? sourceAsset.props.mimeType : null,
+          assetBytes:
+            sourceAsset?.type === 'image' ? sourceAsset.props.fileSize : null,
+          assetWidth:
+            sourceAsset?.type === 'image' ? sourceAsset.props.w : null,
+          assetHeight:
+            sourceAsset?.type === 'image' ? sourceAsset.props.h : null,
+          shapeWidth: sourceShape.props.w,
+          shapeHeight: sourceShape.props.h,
+          shapeCrop: sourceShape.props.crop,
+          shapeRotation: sourceShape.rotation,
+          shapeFlipX: sourceShape.props.flipX,
+          shapeFlipY: sourceShape.props.flipY,
+          pageBounds: {
+            x: pageBounds.x,
+            y: pageBounds.y,
+            width: pageBounds.width,
+            height: pageBounds.height,
+          },
+          naturalScale,
+          exportScale,
+          exportFormat,
+          promptPresent: false,
+          promptChars: 0,
+          requestedSize: 'auto',
+        })
         const exported = await editor.toImage([sourceShape.id], {
           background: false,
           bounds: pageBounds,
@@ -253,18 +287,33 @@ export function useLayerDecomposition(editor: Editor | null) {
           pixelRatio: 1,
           scale: exportScale,
         })
+        const exportedDiagnostics = await inspectImageBlob(exported.blob)
+        logImageDiagnostic('tldraw-to-image-output', {
+          shapeId: sourceShape.id,
+          ...exportedDiagnostics,
+        })
         if (!isEditorActive()) {
           throw new Error('画布已关闭，已取消图层分离')
         }
         const staged = await stageLayerSource(exported.blob)
         stagedSourceId = staged.sourceId
+        logImageDiagnostic('tldraw-source-staged', {
+          sourceId: staged.sourceId,
+          width: staged.width,
+          height: staged.height,
+          exportedWidth: exportedDiagnostics.width,
+          exportedHeight: exportedDiagnostics.height,
+          exportedBytes: exportedDiagnostics.bytes,
+          exportedMimeType: exportedDiagnostics.mimeType,
+          exportedSha256: exportedDiagnostics.sha256,
+        })
         if (!isEditorActive()) {
           throw new Error('画布已关闭，已取消图层分离')
         }
         const manifest = await decomposeLayerSource(
           staged.sourceId,
-          prompt,
-          size,
+          '',
+          'auto',
           (progress) => {
             if (!isEditorActive()) return
             setStatus(
@@ -278,14 +327,23 @@ export function useLayerDecomposition(editor: Editor | null) {
         jobId = manifest.jobId
         if (!isEditorActive()) return
         setStatus('正在写入画布')
+        const resultShape = duplicateShapeId
+          ? editor.getShape<TLImageShape>(duplicateShapeId)
+          : null
+        if (!resultShape || resultShape.type !== 'image') {
+          throw new Error('分离结果副本已被删除')
+        }
+        const resultBounds = editor.getShapePageBounds(resultShape)
+        if (!resultBounds) {
+          throw new Error('无法读取分离结果副本的位置')
+        }
         const sourceBounds: LayerCanvasBounds = {
-          x: pageBounds.x,
-          y: pageBounds.y,
-          width: pageBounds.width,
-          height: pageBounds.height,
+          x: resultBounds.x,
+          y: resultBounds.y,
+          width: resultBounds.width,
+          height: resultBounds.height,
         }
         const prepared = await prepareLayers(
-          editor,
           manifest,
           sourceBounds,
           editor.getCurrentPageId(),
@@ -296,11 +354,19 @@ export function useLayerDecomposition(editor: Editor | null) {
           isEditorActive,
         )
         const currentSourceShape = editor.getShape<TLImageShape>(sourceShape.id)
-        if (!currentSourceShape || currentSourceShape.type !== 'image') {
+        const currentResultShape = duplicateShapeId
+          ? editor.getShape<TLImageShape>(duplicateShapeId)
+          : null
+        if (
+          !currentSourceShape ||
+          currentSourceShape.type !== 'image' ||
+          !currentResultShape ||
+          currentResultShape.type !== 'image'
+        ) {
           for (const item of prepared) {
             unregisterPreview(item.asset.id)
           }
-          throw new Error('分离期间原图片已被删除')
+          throw new Error('分离期间图片副本已被删除')
         }
         const baseLayer = prepared.find((item) => item.zIndex === 0)
         if (!baseLayer) {
@@ -313,35 +379,44 @@ export function useLayerDecomposition(editor: Editor | null) {
           throw new Error('画布元素已达到上限')
         }
 
+        logImageDiagnostic('tldraw-decomposition-prepared', {
+          manifestLayerCount: manifest.assets.length,
+          preparedLayerCount: prepared.length,
+          baseLayerCount: baseLayer ? 1 : 0,
+          overlayLayerCount: overlayLayers.length,
+          resultShapeId: currentResultShape.id,
+          resultBounds: {
+            x: resultBounds.x,
+            y: resultBounds.y,
+            width: resultBounds.width,
+            height: resultBounds.height,
+          },
+        })
+
         const mark = editor.markHistoryStoppingPoint('separate image layers')
         const groupId = createShapeId()
         try {
           editor.run(() => {
+            const groupPosition = editor.getPointInParentSpace(
+              currentResultShape,
+              {
+                x: resultBounds.x,
+                y: resultBounds.y,
+              },
+            )
             editor.createAssets(prepared.map((item) => item.asset))
             editor.createShape<TLGroupShape>({
               id: groupId,
-              parentId: editor.getCurrentPageId(),
+              parentId: currentResultShape.parentId,
               type: 'group',
-              x: pageBounds.x,
-              y: pageBounds.y,
+              x: groupPosition.x,
+              y: groupPosition.y,
               meta: { decompositionGroup: true },
               props: {},
             })
-            editor.reparentShapes(
-              [groupId],
-              currentSourceShape.parentId,
-              currentSourceShape.index,
-            )
-            editor.reparentShapes([currentSourceShape.id], groupId)
-            const basePosition = editor.getPointInParentSpace(groupId, {
-              x: pageBounds.x,
-              y: pageBounds.y,
-            })
             editor.updateShape<TLImageShape>({
-              id: currentSourceShape.id,
+              id: currentResultShape.id,
               type: 'image',
-              x: basePosition.x,
-              y: basePosition.y,
               opacity: 1,
               rotation: 0,
               props: {
@@ -349,11 +424,12 @@ export function useLayerDecomposition(editor: Editor | null) {
                 crop: null,
                 flipX: false,
                 flipY: false,
-                h: pageBounds.height,
-                w: pageBounds.width,
+                h: resultBounds.height,
+                w: resultBounds.width,
               },
               meta: {
-                ...currentSourceShape.meta,
+                ...currentResultShape.meta,
+                decompositionPending: false,
                 decompositionModel: manifest.model,
                 decompositionZIndex: 0,
               },
@@ -361,12 +437,17 @@ export function useLayerDecomposition(editor: Editor | null) {
             editor.createShapes(overlayLayers.map((item) => item.shape))
             if (overlayLayers.length > 0) {
               editor.reparentShapes(
-                overlayLayers.map((item) => item.shape.id),
+                [
+                  currentResultShape.id,
+                  ...overlayLayers.map((item) => item.shape.id),
+                ],
                 groupId,
               )
+            } else {
+              editor.deleteShapes([groupId])
             }
             editor.select(
-              overlayLayers.length > 0 ? groupId : currentSourceShape.id,
+              overlayLayers.length > 0 ? groupId : currentResultShape.id,
             )
           })
         } catch (writeError) {
@@ -379,14 +460,34 @@ export function useLayerDecomposition(editor: Editor | null) {
           throw writeError
         }
 
-        setIsOpen(false)
-        setShapeId(null)
-        setStatus(null)
+        const writtenChildIds = editor.getSortedChildIdsForParent(groupId)
+        logImageDiagnostic('tldraw-decomposition-written', {
+          groupId,
+          childCount: writtenChildIds.length,
+          expectedChildCount: prepared.length,
+          childIds: writtenChildIds,
+          topLevelShapeCount: editor
+            .getCurrentPageShapes()
+            .filter((shape) => shape.parentId === editor.getCurrentPageId())
+            .length,
+        })
+
         editor.setCurrentTool('select')
         editor.focus()
       } catch (submitError) {
+        if (duplicateShapeId && editor.getShape(duplicateShapeId)) {
+          editor.deleteShapes([duplicateShapeId])
+        }
+        const currentSourceShape = editor.getShape<TLImageShape>(sourceShape.id)
+        if (currentSourceShape?.type === 'image')
+          editor.select(currentSourceShape.id)
         if (mountedRef.current) {
-          setError(getLayerDecompositionError(submitError))
+          const message = getLayerDecompositionError(submitError)
+          logImageDiagnostic('tldraw-decomposition-failed', {
+            shapeId: sourceShape.id,
+            message,
+          })
+          setError(message)
           setStatus(null)
         }
       } finally {
@@ -405,22 +506,28 @@ export function useLayerDecomposition(editor: Editor | null) {
           }
         }
         pendingRef.current = false
-        if (mountedRef.current) setIsPending(false)
+        if (mountedRef.current) {
+          setIsPending(false)
+          setIsOpen(false)
+          setStatus(null)
+        }
       }
     },
-    [editor, shapeId, unregisterPreview],
+    [editor, unregisterPreview],
+  )
+
+  const openForShape = useCallback(
+    (nextShapeId: TLShapeId) => {
+      void startForShape(nextShapeId)
+    },
+    [startForShape],
   )
 
   return {
-    dialog: {
-      error,
-      isPending,
-      onOpenChange,
-      onSubmit: submit,
-      open: isOpen,
-      status,
-    },
+    error,
     isPending,
+    isOpen,
     openForShape,
+    status,
   }
 }

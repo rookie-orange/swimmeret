@@ -5,6 +5,7 @@ import {
   AiVideoIcon,
   ChatIcon,
   Folder01Icon,
+  ImageIcon,
   Logout01Icon,
   Settings01Icon,
   UserIcon,
@@ -30,7 +31,12 @@ import {
 import { cn } from '@/lib/utils'
 import { logout } from '@/lib/auth'
 
-type WorkspaceId = 'chat' | 'image-editor' | 'video' | 'history'
+type WorkspaceId =
+  | 'chat'
+  | 'image-editor'
+  | 'video'
+  | 'history'
+  | 'raw-layer-test'
 
 const workspaces = [
   { id: 'chat', label: '对话', to: '/', icon: ChatIcon, disabled: false },
@@ -55,11 +61,19 @@ const workspaces = [
     icon: Folder01Icon,
     disabled: false,
   },
+  {
+    id: 'raw-layer-test',
+    label: '原图测试',
+    to: '/raw-layer-test',
+    icon: ImageIcon,
+    disabled: false,
+  },
 ] as const
 
 function getWorkspace(pathname: string): WorkspaceId {
   if (pathname.startsWith('/image-editor')) return 'image-editor'
   if (pathname.startsWith('/history')) return 'history'
+  if (pathname.startsWith('/raw-layer-test')) return 'raw-layer-test'
   return 'chat'
 }
 
@@ -74,7 +88,7 @@ function NavItem({
   disabled: boolean
   icon: typeof ChatIcon
   label: string
-  to: '/' | '/image-editor' | '/history' | undefined
+  to: '/' | '/image-editor' | '/history' | '/raw-layer-test' | undefined
 }) {
   const navigate = useNavigate()
 

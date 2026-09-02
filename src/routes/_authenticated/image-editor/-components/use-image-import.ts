@@ -14,6 +14,9 @@ import {
   type TLShapePartial,
 } from 'tldraw'
 
+import { logImageDiagnostic, sha256Hex } from '@/lib/image-diagnostics'
+import { registerLocalAsset, releaseLocalAsset } from '@/lib/local-asset-store'
+
 const ACCEPTED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 const MAX_BATCH_SIZE = 10
 const MAX_FILE_SIZE = 30 * 1024 * 1024
@@ -26,6 +29,8 @@ interface ManagedPreview {
 interface DecodedPreview {
   blob: Blob
   height: number
+  sourceHeight: number
+  sourceWidth: number
   width: number
 }
 
@@ -81,7 +86,13 @@ async function decodeImage(file: File): Promise<DecodedPreview> {
     }
     if (!blob) throw new Error('无法生成图片预览')
 
-    return { blob, height, width }
+    return {
+      blob,
+      height,
+      sourceHeight,
+      sourceWidth,
+      width,
+    }
   } finally {
     bitmap?.close()
     URL.revokeObjectURL(sourceUrl)
@@ -126,13 +137,13 @@ export function useImageImport(editor: Editor | null) {
         const managed = managedPreviews.get(asset.id)
         if (!managed) return
 
-        URL.revokeObjectURL(managed.url)
+        releaseLocalAsset(asset.id)
         managedPreviews.delete(asset.id)
       })
     return () => {
       removeAfterAssetDelete()
-      for (const managed of managedPreviews.values()) {
-        if (managed.url) URL.revokeObjectURL(managed.url)
+      for (const assetId of managedPreviews.keys()) {
+        releaseLocalAsset(assetId)
       }
       managedPreviews.clear()
     }
@@ -172,8 +183,26 @@ export function useImageImport(editor: Editor | null) {
           }
 
           try {
+            logImageDiagnostic('tldraw-import-input', {
+              name: file.name,
+              type: file.type,
+              bytes: file.size,
+            })
             const preview = await decodeImage(file)
             if (!mountedRef.current) return
+            logImageDiagnostic('tldraw-preview-created', {
+              name: file.name,
+              sourceType: file.type,
+              sourceBytes: file.size,
+              sourceWidth: preview.sourceWidth,
+              sourceHeight: preview.sourceHeight,
+              previewType: preview.blob.type,
+              previewBytes: preview.blob.size,
+              previewWidth: preview.width,
+              previewHeight: preview.height,
+              sourceSha256: await sha256Hex(file),
+              previewSha256: await sha256Hex(preview.blob),
+            })
             decoded.push({ file, preview })
           } catch {
             rejectedMessages.push(`${file.name}：图片解码失败`)
@@ -198,6 +227,8 @@ export function useImageImport(editor: Editor | null) {
           const previewFile = new File([preview.blob], file.name, {
             type: preview.blob.type || file.type,
           })
+          // 这是 asset 的正式解析地址，而不是仅供占位渲染的 temporary preview。
+          // tldraw 的 toImage() 通过 asset store 解析 props.src；src 为空时导出会得到透明空图。
           const asset = AssetRecordType.create({
             type: 'image',
             props: {
@@ -211,12 +242,9 @@ export function useImageImport(editor: Editor | null) {
             },
             meta: {},
           }) as TLImageAsset
+          asset.props.src = asset.id
           const shapeId = createShapeId()
-          const previewUrl = editor.createTemporaryAssetPreview(
-            asset.id,
-            previewFile,
-          )
-          if (!previewUrl) throw new Error('无法创建图片预览')
+          const previewUrl = registerLocalAsset(asset.id, previewFile)
 
           managedPreviewsRef.current.set(asset.id, {
             url: previewUrl,
@@ -239,7 +267,7 @@ export function useImageImport(editor: Editor | null) {
         if (!editor.canCreateShapes(shapes)) {
           for (const assetId of newManagedAssets) {
             const managed = managedPreviewsRef.current.get(assetId)
-            if (managed) URL.revokeObjectURL(managed.url)
+            if (managed) releaseLocalAsset(assetId)
             managedPreviewsRef.current.delete(assetId)
           }
           rejectedMessages.push('画布元素已达到上限')

@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils'
 import { ImageEditorDock } from './image-editor-dock'
 import { ImageEditorLayers } from './image-editor-layers'
 import { InfiniteCanvas } from './infinite-canvas'
-import { LayerDecompositionDialog } from './layer-decomposition-dialog'
 import { LayerDecompositionProvider } from './layer-decomposition-provider'
 import { useImageImport } from './use-image-import'
 import { useLayerDecomposition } from './use-layer-decomposition'
@@ -90,12 +89,12 @@ export function ImageEditorPage() {
   const layerDecomposition = useLayerDecomposition(editor)
   const layerDecompositionContext = useMemo(
     () => ({
-      isOpen: layerDecomposition.dialog.open,
+      isOpen: layerDecomposition.isOpen,
       isPending: layerDecomposition.isPending,
       openForShape: layerDecomposition.openForShape,
     }),
     [
-      layerDecomposition.dialog.open,
+      layerDecomposition.isOpen,
       layerDecomposition.isPending,
       layerDecomposition.openForShape,
     ],
@@ -152,6 +151,20 @@ export function ImageEditorPage() {
                 {error}
               </p>
             ) : null}
+            {layerDecomposition.error ? (
+              <p className="line-clamp-2 text-xs text-destructive" role="alert">
+                {layerDecomposition.error}
+              </p>
+            ) : null}
+            {layerDecomposition.status ? (
+              <p
+                aria-live="polite"
+                className="truncate text-xs text-muted-foreground"
+                role="status"
+              >
+                {layerDecomposition.status}
+              </p>
+            ) : null}
           </div>
 
           <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
@@ -185,7 +198,6 @@ export function ImageEditorPage() {
           isImporting={isImporting}
           onAddImages={openFileDialog}
         />
-        <LayerDecompositionDialog {...layerDecomposition.dialog} />
       </section>
     </LayerDecompositionProvider>
   )
