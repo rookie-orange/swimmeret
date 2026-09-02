@@ -33,7 +33,7 @@ const MAX_OUTPUT_ITEMS: usize = 17;
 
 pub struct DecompositionState {
     client: Client,
-    staged_sources: Mutex<HashMap<String, Vec<u8>>>,
+    staged_sources: Mutex<HashMap<String, StagedInput>>,
     jobs: Mutex<HashMap<String, CachedJob>>,
     task_gate: Semaphore,
     cache_root: PathBuf,
@@ -157,6 +157,11 @@ struct CachedAsset {
     path: PathBuf,
 }
 
+struct StagedInput {
+    bytes: Vec<u8>,
+    mime_type: &'static str,
+}
+
 #[derive(Serialize)]
 struct ArkRequest {
     model: &'static str,
@@ -206,10 +211,10 @@ pub fn stage_layer_source(
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err(CommandError::new(
             "invalid_input",
-            "图层分离需要 PNG 二进制输入",
+            "图层分离需要 PNG 或 JPEG 二进制输入",
         ));
     };
-    let (width, height) = validate_png(bytes, MAX_INPUT_BYTES, true)?;
+    let (width, height, mime_type) = validate_input_image(bytes, MAX_INPUT_BYTES, true)?;
     let source_id = Uuid::new_v4().to_string();
     let mut staged_sources = state
         .staged_sources
@@ -218,7 +223,13 @@ pub fn stage_layer_source(
 
     // UI 只允许单任务并发；清理未消费输入，避免重复打开对话框积压内存。
     staged_sources.clear();
-    staged_sources.insert(source_id.clone(), bytes.clone());
+    staged_sources.insert(
+        source_id.clone(),
+        StagedInput {
+            bytes: bytes.clone(),
+            mime_type,
+        },
+    );
 
     Ok(StagedSource {
         source_id,
@@ -275,7 +286,11 @@ pub async fn decompose_image(
         .bearer_auth(api_key)
         .json(&ArkRequest {
             model: ARK_MODEL,
-            image: format!("data:image/png;base64,{}", BASE64.encode(source)),
+            image: format!(
+                "data:{};base64,{}",
+                source.mime_type,
+                BASE64.encode(&source.bytes)
+            ),
             size: request.size,
             layer_decomposition: true,
             watermark: false,
@@ -636,6 +651,118 @@ fn validate_png(
     Ok((width, height))
 }
 
+fn validate_input_image(
+    bytes: &[u8],
+    max_bytes: usize,
+    validate_api_dimensions: bool,
+) -> Result<(u32, u32, &'static str), CommandError> {
+    const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
+
+    if bytes.starts_with(PNG_SIGNATURE) {
+        let (width, height) = validate_png(bytes, max_bytes, validate_api_dimensions)?;
+        return Ok((width, height, "image/png"));
+    }
+
+    let (width, height) = validate_jpeg(bytes, max_bytes, validate_api_dimensions)?;
+    Ok((width, height, "image/jpeg"))
+}
+
+fn validate_jpeg(
+    bytes: &[u8],
+    max_bytes: usize,
+    validate_api_dimensions: bool,
+) -> Result<(u32, u32), CommandError> {
+    if bytes.len() > max_bytes {
+        return Err(CommandError::new(
+            "invalid_input",
+            format!("图片不能超过 {} MiB", max_bytes / 1024 / 1024),
+        ));
+    }
+    if bytes.len() < 2 || bytes[..2] != [0xff, 0xd8] {
+        return Err(CommandError::new(
+            "invalid_input",
+            "图片必须是有效的 PNG 或 JPEG 文件",
+        ));
+    }
+
+    let mut offset = 2;
+    while offset < bytes.len() {
+        while offset < bytes.len() && bytes[offset] == 0xff {
+            offset += 1;
+        }
+        if offset >= bytes.len() {
+            break;
+        }
+
+        let marker = bytes[offset];
+        offset += 1;
+        if marker == 0xd9 || marker == 0xda {
+            break;
+        }
+        if (0xd0..=0xd7).contains(&marker) || marker == 0x01 {
+            continue;
+        }
+        if offset + 2 > bytes.len() {
+            break;
+        }
+
+        let segment_length = usize::from(u16::from_be_bytes([bytes[offset], bytes[offset + 1]]));
+        if segment_length < 2 || offset + segment_length > bytes.len() {
+            break;
+        }
+
+        if is_jpeg_start_of_frame(marker) {
+            if segment_length < 7 {
+                break;
+            }
+            let height = u32::from(u16::from_be_bytes([bytes[offset + 3], bytes[offset + 4]]));
+            let width = u32::from(u16::from_be_bytes([bytes[offset + 5], bytes[offset + 6]]));
+            if width == 0 || height == 0 {
+                return Err(CommandError::new("invalid_input", "图片尺寸无效"));
+            }
+            validate_image_dimensions(width, height, validate_api_dimensions)?;
+            return Ok((width, height));
+        }
+
+        offset += segment_length;
+    }
+
+    Err(CommandError::new(
+        "invalid_input",
+        "图片必须是有效的 PNG 或 JPEG 文件",
+    ))
+}
+
+fn is_jpeg_start_of_frame(marker: u8) -> bool {
+    matches!(
+        marker,
+        0xc0..=0xc3 | 0xc5..=0xc7 | 0xc9..=0xcb | 0xcd..=0xcf
+    )
+}
+
+fn validate_image_dimensions(
+    width: u32,
+    height: u32,
+    validate_api_dimensions: bool,
+) -> Result<(), CommandError> {
+    if !validate_api_dimensions {
+        return Ok(());
+    }
+
+    let pixels = u64::from(width) * u64::from(height);
+    let ratio = f64::from(width) / f64::from(height);
+    if !(MIN_INPUT_PIXELS..=MAX_INPUT_PIXELS).contains(&pixels)
+        || !(1.0 / 16.0..=16.0).contains(&ratio)
+    {
+        return Err(CommandError::new(
+            "invalid_input",
+            "图片像素或宽高比不符合 Seedream 图层分离要求",
+        ));
+    }
+
+    Ok(())
+}
+
 fn validate_bounding_box(
     z_index: i32,
     bounding_box: Option<&BoundingBox>,
@@ -723,11 +850,41 @@ mod tests {
         bytes
     }
 
+    fn jpeg_header(width: u16, height: u16) -> Vec<u8> {
+        vec![
+            0xff,
+            0xd8, // SOI
+            0xff,
+            0xc0, // SOF0
+            0x00,
+            0x0b, // segment length
+            0x08, // precision
+            (height >> 8) as u8,
+            height as u8,
+            (width >> 8) as u8,
+            width as u8,
+            0x03,
+            0x01,
+            0x11,
+            0x00,
+            0xff,
+            0xd9, // EOI
+        ]
+    }
+
     #[test]
     fn validates_supported_png_dimensions() {
         assert_eq!(
             validate_png(&png_header(1024, 1024), 1024, true).unwrap(),
             (1024, 1024)
+        );
+    }
+
+    #[test]
+    fn validates_supported_jpeg_dimensions() {
+        assert_eq!(
+            validate_input_image(&jpeg_header(1024, 1024), 1024, true).unwrap(),
+            (1024, 1024, "image/jpeg")
         );
     }
 

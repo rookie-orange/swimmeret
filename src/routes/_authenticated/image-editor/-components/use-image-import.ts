@@ -16,7 +16,7 @@ import {
 
 const ACCEPTED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 const MAX_BATCH_SIZE = 10
-const MAX_FILE_SIZE = 20 * 1024 * 1024
+const MAX_FILE_SIZE = 30 * 1024 * 1024
 const MAX_PREVIEW_EDGE = 4096
 
 interface ManagedPreview {

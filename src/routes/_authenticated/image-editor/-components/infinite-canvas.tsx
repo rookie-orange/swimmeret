@@ -22,7 +22,7 @@ export const InfiniteCanvas = memo(function InfiniteCanvas({
         components={canvasComponents}
         hideUi
         locale="en"
-        maxAssetSize={20 * 1024 * 1024}
+        maxAssetSize={30 * 1024 * 1024}
         maxImageDimension={4096}
         onMount={onMount}
       />

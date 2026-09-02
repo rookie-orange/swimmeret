@@ -229,21 +229,26 @@ export function useLayerDecomposition(editor: Editor | null) {
         mountedRef.current && editorRef.current === editor
 
       try {
-        const naturalScale = sourceShape.props.assetId
-          ? (() => {
-              const asset = editor.getAsset(sourceShape.props.assetId)
-              if (!asset || asset.type !== 'image') return 1
-              return Math.max(
-                asset.props.w / pageBounds.width,
-                asset.props.h / pageBounds.height,
+        const sourceAsset = sourceShape.props.assetId
+          ? editor.getAsset(sourceShape.props.assetId)
+          : null
+        const naturalScale =
+          sourceAsset?.type === 'image'
+            ? Math.max(
+                sourceAsset.props.w / pageBounds.width,
+                sourceAsset.props.h / pageBounds.height,
               )
-            })()
-          : 1
+            : 1
+        const exportFormat =
+          sourceAsset?.type === 'image' &&
+          sourceAsset.props.mimeType === 'image/jpeg'
+            ? 'jpeg'
+            : 'png'
         const exportScale = calculateLayerExportScale(pageBounds, naturalScale)
         const exported = await editor.toImage([sourceShape.id], {
           background: false,
           bounds: pageBounds,
-          format: 'png',
+          format: exportFormat,
           padding: 0,
           pixelRatio: 1,
           scale: exportScale,
