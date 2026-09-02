@@ -2,12 +2,13 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowLeft01Icon,
+  Magnet01Icon,
   Redo02Icon,
   Undo02Icon,
   ViewIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { type Editor, useValue } from 'tldraw'
+import { type Editor, getUserPreferences, useValue } from 'tldraw'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
@@ -82,6 +83,42 @@ function HistoryControls({ editor }: { editor: Editor | null }) {
   )
 }
 
+function SnapControl({ editor }: { editor: Editor | null }) {
+  const isSnapMode = useValue(
+    'image editor snap mode',
+    () => editor?.user.getIsSnapMode() ?? false,
+    [editor],
+  )
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={isSnapMode ? '关闭吸附' : '开启吸附'}
+            aria-pressed={isSnapMode}
+            className="rounded-full"
+            disabled={!editor}
+            onClick={() => {
+              editor?.user.updateUserPreferences({
+                isSnapMode: !editor.user.getIsSnapMode(),
+              })
+              editor?.focus()
+            }}
+            size="icon-sm"
+            variant={isSnapMode ? 'secondary' : 'ghost'}
+          />
+        }
+      >
+        <HugeiconsIcon icon={Magnet01Icon} strokeWidth={1.8} />
+      </TooltipTrigger>
+      <TooltipContent>
+        {isSnapMode ? '吸附已开启' : '吸附已关闭'}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 export function ImageEditorPage() {
   const [editor, setEditor] = useState<Editor | null>(null)
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
@@ -100,6 +137,10 @@ export function ImageEditorPage() {
     ],
   )
   const handleMount = useCallback((mountedEditor: Editor) => {
+    if (getUserPreferences().isSnapMode == null) {
+      mountedEditor.user.updateUserPreferences({ isSnapMode: true })
+    }
+
     mountedEditor.centerOnPoint({ x: 0, y: 0 })
     setEditor(mountedEditor)
 
@@ -169,6 +210,7 @@ export function ImageEditorPage() {
 
           <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
             <HistoryControls editor={editor} />
+            <SnapControl editor={editor} />
             <Button
               className="hidden rounded-full xl:inline-flex"
               disabled
