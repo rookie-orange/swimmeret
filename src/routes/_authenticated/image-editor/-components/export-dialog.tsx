@@ -76,7 +76,6 @@ export function ExportDialog({
             editor={editor}
             hasSelection={hasSelection}
             key={`${hasSelection}-${shapeIds?.join(',') ?? ''}`}
-            onCancel={() => onOpenChange(false)}
             onDone={() => onOpenChange(false)}
             shapeIds={shapeIds}
           />
@@ -89,13 +88,11 @@ export function ExportDialog({
 function ExportForm({
   editor,
   hasSelection,
-  onCancel,
   onDone,
   shapeIds,
 }: {
   editor: Editor | null
   hasSelection: boolean
-  onCancel: () => void
   onDone: () => void
   shapeIds?: TLShapeId[]
 }) {
