@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
+import { Route as canvasRouteRouteImport } from './routes/(canvas)/route'
 import { Route as errorsRouteRouteImport } from './routes/(errors)/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as authLoginRouteRouteImport } from './routes/(auth)/login/route'
@@ -18,6 +19,7 @@ import { Route as AuthenticatedHistoryRouteRouteImport } from './routes/_authent
 import { Route as AuthenticatedImageEditorRouteRouteImport } from './routes/_authenticated/image-editor/route'
 import { Route as AuthenticatedRawLayerTestRouteRouteImport } from './routes/_authenticated/raw-layer-test/route'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
+import { Route as canvasImageEditorIdRouteRouteImport } from './routes/(canvas)/image-editor/$id/route'
 import { Route as errorsErrorsStatusRouteRouteImport } from './routes/(errors)/errors/$status/route'
 import { Route as errorsErrors401RouteRouteImport } from './routes/(errors)/errors/401/route'
 import { Route as errorsErrors403RouteRouteImport } from './routes/(errors)/errors/403/route'
@@ -26,6 +28,10 @@ import { Route as errorsErrors500RouteRouteImport } from './routes/(errors)/erro
 
 const authRouteRoute = authRouteRouteImport.update({
   id: '/(auth)',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const canvasRouteRoute = canvasRouteRouteImport.update({
+  id: '/(canvas)',
   getParentRoute: () => rootRouteImport,
 } as any)
 const errorsRouteRoute = errorsRouteRouteImport.update({
@@ -70,6 +76,12 @@ const AuthenticatedSettingsRouteRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const canvasImageEditorIdRouteRoute =
+  canvasImageEditorIdRouteRouteImport.update({
+    id: '/image-editor/$id',
+    path: '/image-editor/$id',
+    getParentRoute: () => canvasRouteRoute,
+  } as any)
 const errorsErrorsStatusRouteRoute = errorsErrorsStatusRouteRouteImport.update({
   id: '/errors/$status',
   path: '/errors/$status',
@@ -103,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/image-editor': typeof AuthenticatedImageEditorRouteRoute
   '/raw-layer-test': typeof AuthenticatedRawLayerTestRouteRoute
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/image-editor/$id': typeof canvasImageEditorIdRouteRoute
   '/errors/$status': typeof errorsErrorsStatusRouteRoute
   '/errors/401': typeof errorsErrors401RouteRoute
   '/errors/403': typeof errorsErrors403RouteRoute
@@ -116,6 +129,7 @@ export interface FileRoutesByTo {
   '/image-editor': typeof AuthenticatedImageEditorRouteRoute
   '/raw-layer-test': typeof AuthenticatedRawLayerTestRouteRoute
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/image-editor/$id': typeof canvasImageEditorIdRouteRoute
   '/errors/$status': typeof errorsErrorsStatusRouteRoute
   '/errors/401': typeof errorsErrors401RouteRoute
   '/errors/403': typeof errorsErrors403RouteRoute
@@ -125,6 +139,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(auth)': typeof authRouteRouteWithChildren
+  '/(canvas)': typeof canvasRouteRouteWithChildren
   '/(errors)': typeof errorsRouteRouteWithChildren
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRouteRoute
@@ -133,6 +148,7 @@ export interface FileRoutesById {
   '/_authenticated/image-editor': typeof AuthenticatedImageEditorRouteRoute
   '/_authenticated/raw-layer-test': typeof AuthenticatedRawLayerTestRouteRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
+  '/(canvas)/image-editor/$id': typeof canvasImageEditorIdRouteRoute
   '/(errors)/errors/$status': typeof errorsErrorsStatusRouteRoute
   '/(errors)/errors/401': typeof errorsErrors401RouteRoute
   '/(errors)/errors/403': typeof errorsErrors403RouteRoute
@@ -148,6 +164,7 @@ export interface FileRouteTypes {
     | '/image-editor'
     | '/raw-layer-test'
     | '/settings'
+    | '/image-editor/$id'
     | '/errors/$status'
     | '/errors/401'
     | '/errors/403'
@@ -161,6 +178,7 @@ export interface FileRouteTypes {
     | '/image-editor'
     | '/raw-layer-test'
     | '/settings'
+    | '/image-editor/$id'
     | '/errors/$status'
     | '/errors/401'
     | '/errors/403'
@@ -169,6 +187,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/(auth)'
+    | '/(canvas)'
     | '/(errors)'
     | '/_authenticated'
     | '/_authenticated/'
@@ -177,6 +196,7 @@ export interface FileRouteTypes {
     | '/_authenticated/image-editor'
     | '/_authenticated/raw-layer-test'
     | '/_authenticated/settings'
+    | '/(canvas)/image-editor/$id'
     | '/(errors)/errors/$status'
     | '/(errors)/errors/401'
     | '/(errors)/errors/403'
@@ -186,6 +206,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   authRouteRoute: typeof authRouteRouteWithChildren
+  canvasRouteRoute: typeof canvasRouteRouteWithChildren
   errorsRouteRoute: typeof errorsRouteRouteWithChildren
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
 }
@@ -197,6 +218,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof authRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(canvas)': {
+      id: '/(canvas)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof canvasRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(errors)': {
@@ -255,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/(canvas)/image-editor/$id': {
+      id: '/(canvas)/image-editor/$id'
+      path: '/image-editor/$id'
+      fullPath: '/image-editor/$id'
+      preLoaderRoute: typeof canvasImageEditorIdRouteRouteImport
+      parentRoute: typeof canvasRouteRoute
+    }
     '/(errors)/errors/$status': {
       id: '/(errors)/errors/$status'
       path: '/errors/$status'
@@ -305,6 +340,18 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
   authRouteRouteChildren,
 )
 
+interface canvasRouteRouteChildren {
+  canvasImageEditorIdRouteRoute: typeof canvasImageEditorIdRouteRoute
+}
+
+const canvasRouteRouteChildren: canvasRouteRouteChildren = {
+  canvasImageEditorIdRouteRoute: canvasImageEditorIdRouteRoute,
+}
+
+const canvasRouteRouteWithChildren = canvasRouteRoute._addFileChildren(
+  canvasRouteRouteChildren,
+)
+
 interface errorsRouteRouteChildren {
   errorsErrorsStatusRouteRoute: typeof errorsErrorsStatusRouteRoute
   errorsErrors401RouteRoute: typeof errorsErrors401RouteRoute
@@ -346,6 +393,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   authRouteRoute: authRouteRouteWithChildren,
+  canvasRouteRoute: canvasRouteRouteWithChildren,
   errorsRouteRoute: errorsRouteRouteWithChildren,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
 }

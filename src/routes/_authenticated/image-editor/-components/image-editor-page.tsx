@@ -169,12 +169,12 @@ export function ImageEditorPage() {
         <div className="pointer-events-none absolute top-2 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:top-4 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
           <header className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
             <Link
-              aria-label="返回聊天"
+              aria-label="返回图片编辑项目"
               className={cn(
-                buttonVariants({ size: 'icon-sm', variant: 'ghost' }),
+                buttonVariants({ size: 'icon', variant: 'ghost' }),
                 'shrink-0 rounded-full text-muted-foreground',
               )}
-              to="/"
+              to="/image-editor"
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} />
             </Link>
