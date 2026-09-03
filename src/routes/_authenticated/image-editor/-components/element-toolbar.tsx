@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import {
   Copy01Icon,
   Delete02Icon,
+  Download01Icon,
   LayerBringToFrontIcon,
   LayerSendToBackIcon,
   UngroupLayersIcon,
@@ -18,10 +19,11 @@ import {
 import { cn } from '@/lib/utils'
 
 import { useLayerDecompositionContext } from './layer-decomposition-state'
+import { ExportDialog } from './export-dialog'
 
 // 与下方 Tailwind 固定宽高保持同步，用于精确约束画布内定位。
-const TOOLBAR_WIDTH = 160
-const IMAGE_TOOLBAR_WIDTH = 200
+const TOOLBAR_WIDTH = 192
+const IMAGE_TOOLBAR_WIDTH = 240
 const TOOLBAR_HEIGHT = 40
 const TOOLBAR_GAP = 8
 const VIEWPORT_MARGIN = 8
@@ -46,12 +48,14 @@ const actions = [
     icon: LayerSendToBackIcon,
     imageOnly: false,
   },
+  { id: 'export', label: '导出', icon: Download01Icon, imageOnly: false },
   { id: 'delete', label: '删除', icon: Delete02Icon, imageOnly: false },
 ] as const
 
 export function ElementToolbar() {
   const editor = useEditor()
   const { isOpen, isPending, openForShape } = useLayerDecompositionContext()
+  const [isExportOpen, setIsExportOpen] = useState(false)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const placement = useValue(
     'image editor element toolbar placement',
@@ -124,6 +128,11 @@ export function ElementToolbar() {
       return
     }
 
+    if (action === 'export') {
+      setIsExportOpen(true)
+      return
+    }
+
     editor.markHistoryStoppingPoint(`element toolbar ${action}`)
 
     switch (action) {
@@ -149,34 +158,42 @@ export function ElementToolbar() {
   )
 
   return (
-    <div
-      aria-label="元素操作"
-      className={cn(
-        'pointer-events-auto absolute top-0 left-0 grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
-        placement.isImage ? 'w-50 grid-cols-5' : 'w-40 grid-cols-4',
-      )}
-      onPointerDown={(event) => event.preventDefault()}
-      ref={toolbarRef}
-      role="toolbar"
-    >
-      {visibleActions.map((action) => (
-        <Tooltip key={action.id}>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label={action.label}
-                disabled={action.id === 'separate-layers' && isPending}
-                onClick={() => runAction(action.id)}
-                size="icon-sm"
-                variant={action.id === 'delete' ? 'destructive' : 'ghost'}
-              />
-            }
-          >
-            <HugeiconsIcon icon={action.icon} strokeWidth={1.8} />
-          </TooltipTrigger>
-          <TooltipContent sideOffset={10}>{action.label}</TooltipContent>
-        </Tooltip>
-      ))}
-    </div>
+    <>
+      <div
+        aria-label="元素操作"
+        className={cn(
+          'pointer-events-auto absolute top-0 left-0 grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
+          placement.isImage ? 'w-60 grid-cols-6' : 'w-48 grid-cols-5',
+        )}
+        onPointerDown={(event) => event.preventDefault()}
+        ref={toolbarRef}
+        role="toolbar"
+      >
+        {visibleActions.map((action) => (
+          <Tooltip key={action.id}>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label={action.label}
+                  disabled={action.id === 'separate-layers' && isPending}
+                  onClick={() => runAction(action.id)}
+                  size="icon-sm"
+                  variant={action.id === 'delete' ? 'destructive' : 'ghost'}
+                />
+              }
+            >
+              <HugeiconsIcon icon={action.icon} />
+            </TooltipTrigger>
+            <TooltipContent sideOffset={10}>{action.label}</TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+      <ExportDialog
+        editor={editor}
+        onOpenChange={setIsExportOpen}
+        open={isExportOpen}
+        shapeIds={placement ? [placement.shapeId] : undefined}
+      />
+    </>
   )
 }

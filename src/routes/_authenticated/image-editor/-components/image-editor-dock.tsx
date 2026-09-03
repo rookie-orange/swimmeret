@@ -1,12 +1,12 @@
 import {
   AiSparklesIcon,
-  CursorPointer01Icon,
   HandIcon,
   ImageAdd01Icon,
   MoreHorizontalIcon,
   PencilEdit01Icon,
   ShapesIcon,
   TextIcon,
+  Cursor01Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { type Editor, useValue } from 'tldraw'
@@ -17,10 +17,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
 
 const imageTools = [
-  { id: 'select', label: '选择', icon: CursorPointer01Icon },
+  { id: 'select', label: '选择', icon: Cursor01Icon },
   { id: 'hand', label: '抓手', icon: HandIcon },
   { id: 'draw', label: '钢笔', icon: PencilEdit01Icon },
   { id: 'text', label: '文字', icon: TextIcon },
@@ -46,8 +45,8 @@ export function ImageEditorDock({
 
   return (
     <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-4 xl:right-80">
-      <div className="pointer-events-auto w-fit max-w-full rounded-3xl border border-border bg-card/95 p-1.5 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
-        <div className="flex h-11 min-w-0 items-center gap-0.5 overflow-x-auto px-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
+      <div className="pointer-events-auto w-fit max-w-full rounded-3xl border border-border bg-card/95 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
+        <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto p-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
           {imageTools.map((tool) => (
             <Tooltip key={tool.id}>
               <TooltipTrigger
@@ -55,16 +54,13 @@ export function ImageEditorDock({
                   <Button
                     aria-label={tool.label}
                     aria-pressed={activeTool === tool.id}
-                    className={cn(
-                      'size-10 shrink-0 rounded-full text-muted-foreground transition-all duration-200 motion-reduce:transition-none',
-                    )}
                     disabled={!editor}
                     onClick={() => {
                       editor?.setCurrentTool(tool.id)
                       editor?.focus()
                     }}
-                    size="icon"
-                    variant={activeTool === tool.id ? 'secondary' : 'ghost'}
+                    size="icon-lg"
+                    variant={activeTool === tool.id ? 'default' : 'ghost'}
                   />
                 }
               >
@@ -78,10 +74,9 @@ export function ImageEditorDock({
               render={
                 <Button
                   aria-label="素材"
-                  className="size-10 shrink-0 rounded-full text-muted-foreground"
                   disabled={!editor || isImporting}
                   onClick={onAddImages}
-                  size="icon"
+                  size="icon-lg"
                   variant="ghost"
                 />
               }
@@ -95,9 +90,8 @@ export function ImageEditorDock({
               render={
                 <Button
                   aria-label="AI 助手"
-                  className="hidden size-10 shrink-0 rounded-full text-primary sm:inline-flex"
                   disabled
-                  size="icon"
+                  size="icon-lg"
                   variant="ghost"
                 />
               }
@@ -111,9 +105,8 @@ export function ImageEditorDock({
               render={
                 <Button
                   aria-label="更多工具"
-                  className="hidden size-10 shrink-0 rounded-full text-muted-foreground sm:inline-flex"
                   disabled
-                  size="icon"
+                  size="icon-lg"
                   variant="ghost"
                 />
               }

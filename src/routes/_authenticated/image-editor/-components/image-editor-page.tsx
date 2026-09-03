@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowLeft01Icon,
+  Download01Icon,
   Magnet01Icon,
   Redo02Icon,
   Undo02Icon,
@@ -21,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { ImageEditorDock } from './image-editor-dock'
 import { ImageEditorLayers } from './image-editor-layers'
 import { InfiniteCanvas } from './infinite-canvas'
+import { ExportDialog } from './export-dialog'
 import { LayerDecompositionProvider } from './layer-decomposition-provider'
 import { useImageImport } from './use-image-import'
 import { useLayerDecomposition } from './use-layer-decomposition'
@@ -50,12 +52,12 @@ function HistoryControls({ editor }: { editor: Editor | null }) {
                 editor?.undo()
                 editor?.focus()
               }}
-              size="icon-sm"
+              size="icon"
               variant="ghost"
             />
           }
         >
-          <HugeiconsIcon icon={Undo02Icon} strokeWidth={1.8} />
+          <HugeiconsIcon icon={Undo02Icon} />
         </TooltipTrigger>
         <TooltipContent>撤销</TooltipContent>
       </Tooltip>
@@ -70,12 +72,12 @@ function HistoryControls({ editor }: { editor: Editor | null }) {
                 editor?.redo()
                 editor?.focus()
               }}
-              size="icon-sm"
+              size="icon"
               variant="ghost"
             />
           }
         >
-          <HugeiconsIcon icon={Redo02Icon} strokeWidth={1.8} />
+          <HugeiconsIcon icon={Redo02Icon} />
         </TooltipTrigger>
         <TooltipContent>重做</TooltipContent>
       </Tooltip>
@@ -105,12 +107,12 @@ function SnapControl({ editor }: { editor: Editor | null }) {
               })
               editor?.focus()
             }}
-            size="icon-sm"
+            size="icon"
             variant={isSnapMode ? 'secondary' : 'ghost'}
           />
         }
       >
-        <HugeiconsIcon icon={Magnet01Icon} strokeWidth={1.8} />
+        <HugeiconsIcon icon={Magnet01Icon} />
       </TooltipTrigger>
       <TooltipContent>
         {isSnapMode ? '吸附已开启' : '吸附已关闭'}
@@ -121,6 +123,7 @@ function SnapControl({ editor }: { editor: Editor | null }) {
 
 export function ImageEditorPage() {
   const [editor, setEditor] = useState<Editor | null>(null)
+  const [isExportOpen, setIsExportOpen] = useState(false)
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
     useImageImport(editor)
   const layerDecomposition = useLayerDecomposition(editor)
@@ -164,7 +167,7 @@ export function ImageEditorPage() {
         />
 
         <div className="pointer-events-none absolute top-2 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:top-4 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
-          <header className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+          <header className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
             <Link
               aria-label="返回聊天"
               className={cn(
@@ -173,7 +176,7 @@ export function ImageEditorPage() {
               )}
               to="/"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={1.8} />
+              <HugeiconsIcon icon={ArrowLeft01Icon} />
             </Link>
           </header>
 
@@ -208,25 +211,33 @@ export function ImageEditorPage() {
             ) : null}
           </div>
 
-          <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-2 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+          <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
             <HistoryControls editor={editor} />
             <SnapControl editor={editor} />
             <Button
               className="hidden rounded-full xl:inline-flex"
               disabled
-              size="sm"
               variant="ghost"
             >
-              <HugeiconsIcon
-                data-icon="inline-start"
-                icon={ViewIcon}
-                strokeWidth={1.8}
-              />
+              <HugeiconsIcon data-icon="inline-start" icon={ViewIcon} />
               预览
             </Button>
-            <Button className="rounded-full" disabled size="sm">
-              导出
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    aria-label="导出"
+                    className="rounded-full"
+                    disabled={!editor}
+                    onClick={() => setIsExportOpen(true)}
+                  />
+                }
+              >
+                <HugeiconsIcon data-icon="inline-start" icon={Download01Icon} />
+                导出
+              </TooltipTrigger>
+              <TooltipContent>导出</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -241,6 +252,11 @@ export function ImageEditorPage() {
           onAddImages={openFileDialog}
         />
       </section>
+      <ExportDialog
+        editor={editor}
+        onOpenChange={setIsExportOpen}
+        open={isExportOpen}
+      />
     </LayerDecompositionProvider>
   )
 }

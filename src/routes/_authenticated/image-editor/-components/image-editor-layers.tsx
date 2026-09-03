@@ -156,7 +156,6 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
           <HugeiconsIcon
             className="text-muted-foreground"
             icon={getLayerIcon(layer.type)}
-            strokeWidth={1.8}
           />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm">{layer.name}</span>
@@ -207,11 +206,7 @@ function LayerDecompositionAction({ editor }: { editor: Editor }) {
       }}
       size="sm"
     >
-      <HugeiconsIcon
-        data-icon="inline-start"
-        icon={UngroupLayersIcon}
-        strokeWidth={1.8}
-      />
+      <HugeiconsIcon data-icon="inline-start" icon={UngroupLayersIcon} />
       {isPending ? '正在分离' : '分离当前图层'}
     </Button>
   )
@@ -226,7 +221,7 @@ export function ImageEditorLayers({
       <div className="flex items-center justify-between px-4 py-3">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.8} />
+            <HugeiconsIcon icon={Layers01Icon} />
             图层
           </div>
           {editor ? (
@@ -248,7 +243,7 @@ export function ImageEditorLayers({
               />
             }
           >
-            <HugeiconsIcon icon={ImageAdd01Icon} strokeWidth={1.8} />
+            <HugeiconsIcon icon={ImageAdd01Icon} />
           </TooltipTrigger>
           <TooltipContent>添加图片</TooltipContent>
         </Tooltip>

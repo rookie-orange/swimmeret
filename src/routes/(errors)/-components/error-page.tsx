@@ -34,11 +34,7 @@ export function ErrorPage({ code, title, description }: ErrorPageProps) {
           )}
           to="/"
         >
-          <HugeiconsIcon
-            data-icon="inline-start"
-            icon={ArrowLeft01Icon}
-            strokeWidth={1.8}
-          />
+          <HugeiconsIcon data-icon="inline-start" icon={ArrowLeft01Icon} />
           返回工作台
         </Link>
       </section>

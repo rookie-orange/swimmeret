@@ -40,7 +40,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </p>
         </div>
         <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-          <HugeiconsIcon icon={Key01Icon} size={22} strokeWidth={1.8} />
+          <HugeiconsIcon icon={Key01Icon} size={22} />
         </div>
       </div>
 
@@ -75,11 +75,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           type="submit"
         >
           <span>进入工作台</span>
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="inline-end"
-            strokeWidth={1.8}
-          />
+          <HugeiconsIcon icon={ArrowRight01Icon} data-icon="inline-end" />
         </Button>
       </form>
     </section>

@@ -166,7 +166,7 @@ export function WorkspaceCapsule({ className }: WorkspaceCapsuleProps) {
               <DropdownMenuLabel className="flex items-center gap-3 px-3 py-3">
                 <Avatar size="lg">
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    <HugeiconsIcon icon={UserIcon} strokeWidth={1.8} />
+                    <HugeiconsIcon icon={UserIcon} />
                   </AvatarFallback>
                 </Avatar>
                 <span className="flex min-w-0 flex-col gap-0.5">

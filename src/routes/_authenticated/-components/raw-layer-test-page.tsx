@@ -310,7 +310,7 @@ export function RawLayerTestPage() {
         <header className="flex flex-col gap-4 border-b border-border pb-7 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-              <HugeiconsIcon icon={ImageIcon} size={24} strokeWidth={1.8} />
+              <HugeiconsIcon icon={ImageIcon} size={24} />
             </div>
             <div>
               <p className="mb-1 text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
@@ -378,11 +378,7 @@ export function RawLayerTestPage() {
                 htmlFor="raw-layer-test-file"
               >
                 <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-background text-muted-foreground shadow-sm transition-transform group-hover:-translate-y-0.5 group-hover:text-foreground">
-                  <HugeiconsIcon
-                    icon={ImageAdd01Icon}
-                    size={22}
-                    strokeWidth={1.8}
-                  />
+                  <HugeiconsIcon icon={ImageAdd01Icon} size={22} />
                 </span>
                 <span className="text-sm font-medium text-foreground">
                   {file ? '重新选择图片' : '选择 PNG 或 JPEG'}

@@ -6,7 +6,7 @@ export function SettingsPage() {
     <section className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col overflow-y-auto pb-12 pt-28">
       <div className="flex items-center gap-3">
         <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-          <HugeiconsIcon icon={Settings01Icon} size={20} strokeWidth={1.8} />
+          <HugeiconsIcon icon={Settings01Icon} size={20} />
         </span>
         <div>
           <p className="text-xs font-medium text-muted-foreground">WORKSPACE</p>
