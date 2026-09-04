@@ -63,27 +63,24 @@ function createProject(): ImageEditorProject {
 }
 
 function ProjectThumbnail({
-  icon = ImageIcon,
   className,
-  size = 48,
+  children,
+  onClick,
 }: {
-  icon?: typeof ImageIcon
   className?: string
-  size?: number
+  children?: React.ReactNode
+  onClick?: () => void
 }) {
   return (
-    <div
+    <button
       className={cn(
-        'relative flex aspect-4/3 w-full rounded-xl items-center justify-center overflow-hidden border border-border bg-background',
+        'relative flex aspect-5/3 w-full cursor-pointer rounded-xl items-center justify-center overflow-hidden bg-muted',
         className,
       )}
+      onClick={onClick}
     >
-      <HugeiconsIcon
-        className="text-muted-foreground"
-        icon={icon}
-        size={size}
-      />
-    </div>
+      {children}
+    </button>
   )
 }
 
@@ -108,13 +105,13 @@ function ProjectItem({
           preload="intent"
           to="/image-editor/$id"
         >
-          <ProjectThumbnail />
+          <ProjectThumbnail className="group-hover/bg-secondary" />
         </Link>
 
         <Checkbox
           aria-label={`选择项目 ${project.name}`}
           checked={selected}
-          className="absolute top-3 left-3 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
+          className="absolute top-3 left-3 size-5 bg-background opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
           onCheckedChange={(checked) => onSelect(checked === true)}
         />
 
@@ -123,9 +120,9 @@ function ProjectItem({
             render={
               <Button
                 aria-label={`删除项目 ${project.name}`}
-                className="absolute right-2 bottom-2 size-8 rounded-full bg-card/90 text-destructive opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100 hover:bg-destructive/10"
+                className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
                 onClick={onDelete}
-                size="icon-sm"
+                size="icon"
                 variant="destructive"
               />
             }
@@ -249,18 +246,12 @@ export function ImageEditorProjectsPage() {
         <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4 xl:grid-cols-5">
           {view === 'mine' && !query.trim() ? (
             <article className="group/item min-w-0">
-              <Button
-                aria-label="新建图片编辑项目"
-                className="h-auto w-full rounded-none border-0 bg-transparent p-0 hover:bg-transparent"
+              <ProjectThumbnail
                 onClick={handleCreateProject}
-                variant="ghost"
+                className="bg-background border border-border hover:bg-background/80"
               >
-                <ProjectThumbnail
-                  icon={Add01Icon}
-                  className="bg-secondary"
-                  size={64}
-                />
-              </Button>
+                <HugeiconsIcon icon={Add01Icon} size={48} strokeWidth={1} />
+              </ProjectThumbnail>
               <p className="mt-3 truncate text-sm font-medium text-foreground">
                 添加项目
               </p>
