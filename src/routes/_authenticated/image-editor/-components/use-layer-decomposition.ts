@@ -3,7 +3,6 @@ import {
   AssetRecordType,
   createShapeId,
   type Editor,
-  type TLAssetId,
   type TLGroupShape,
   type TLImageAsset,
   type TLImageShape,
@@ -28,11 +27,11 @@ import {
   type LayerCanvasBounds,
 } from './layer-decomposition-utils'
 import { inspectImageBlob, logImageDiagnostic } from '@/lib/image-diagnostics'
-import { registerLocalAsset, releaseLocalAsset } from '@/lib/local-asset-store'
-
-interface ManagedLayerPreview {
-  url: string
-}
+import {
+  getProjectAssets,
+  prepareImage,
+  type ProjectAssetStore,
+} from '@/lib/local-asset-store'
 
 interface PreparedLayer {
   asset: TLImageAsset
@@ -54,81 +53,69 @@ async function prepareLayers(
   manifest: LayerDecompositionManifest,
   sourceBounds: LayerCanvasBounds,
   parentId: TLParentId,
-  registerPreview: (assetId: TLAssetId, url: string) => void,
-  unregisterPreview: (assetId: TLAssetId) => void,
+  assetStore: ProjectAssetStore,
   isActive: () => boolean,
 ) {
   const prepared: PreparedLayer[] = []
-  const createdAssetIds: TLAssetId[] = []
-
-  try {
-    const layerData = await Promise.all(
-      manifest.assets.map(async (item) => {
-        const bytes = await readDecompositionAsset(manifest.jobId, item.assetId)
-        if (!isActive()) throw new Error('画布已关闭，已取消写入图层')
-        return { bytes, item }
-      }),
-    )
-
-    for (const { bytes, item } of layerData) {
+  const layerData = await Promise.all(
+    manifest.assets.map(async (item) => {
+      const bytes = await readDecompositionAsset(manifest.jobId, item.assetId)
       if (!isActive()) throw new Error('画布已关闭，已取消写入图层')
-      const placement = getLayerCanvasPlacement(item, sourceBounds)
-      const name = createLayerName(item.name, item.zIndex, item.zIndex === 0)
-      const file = new File([bytes], name, { type: item.mimeType })
-      const asset = AssetRecordType.create({
+      return { bytes, item }
+    }),
+  )
+
+  for (const { bytes, item } of layerData) {
+    if (!isActive()) throw new Error('画布已关闭，已取消写入图层')
+    const placement = getLayerCanvasPlacement(item, sourceBounds)
+    const name = createLayerName(item.name, item.zIndex, item.zIndex === 0)
+    const file = new File([bytes], name, { type: item.mimeType })
+    const asset = AssetRecordType.create({
+      type: 'image',
+      props: {
+        fileSize: file.size,
+        h: item.height,
+        isAnimated: false,
+        mimeType: file.type,
+        name,
+        src: null,
+        w: item.width,
+      },
+      meta: {
+        ...(item.description == null
+          ? {}
+          : { decompositionDescription: item.description }),
+        decompositionZIndex: item.zIndex,
+      },
+    }) as TLImageAsset
+    const { preview } = await prepareImage(file)
+    asset.props.src = await assetStore.put(file, preview)
+    if (!isActive()) throw new Error('画布已关闭，已取消写入图层')
+
+    prepared.push({
+      asset,
+      shape: {
+        id: createShapeId(),
+        parentId,
         type: 'image',
+        x: placement.x,
+        y: placement.y,
         props: {
-          fileSize: file.size,
-          h: item.height,
-          isAnimated: false,
-          mimeType: file.type,
-          name,
-          // 图层也要有正式 src，toImage() 才能通过 asset store 解析到真实像素。
-          src: null,
-          w: item.width,
+          altText: item.description ?? item.name ?? '',
+          assetId: asset.id,
+          h: placement.height,
+          w: placement.width,
         },
         meta: {
-          ...(item.description == null
-            ? {}
-            : { decompositionDescription: item.description }),
+          decompositionModel: manifest.model,
           decompositionZIndex: item.zIndex,
         },
-      }) as TLImageAsset
-      asset.props.src = asset.id
-      const previewUrl = registerLocalAsset(asset.id, file)
-      registerPreview(asset.id, previewUrl)
-      createdAssetIds.push(asset.id)
-
-      prepared.push({
-        asset,
-        shape: {
-          id: createShapeId(),
-          parentId,
-          type: 'image',
-          x: placement.x,
-          y: placement.y,
-          props: {
-            altText: item.description ?? item.name ?? '',
-            assetId: asset.id,
-            h: placement.height,
-            w: placement.width,
-          },
-          meta: {
-            decompositionModel: manifest.model,
-            decompositionZIndex: item.zIndex,
-          },
-        },
-        zIndex: item.zIndex,
-      })
-    }
-
-    return prepared
-  } catch (error) {
-    for (const assetId of createdAssetIds) {
-      unregisterPreview(assetId)
-    }
-    throw error
+      },
+      zIndex: item.zIndex,
+    })
   }
+
+  return prepared
 }
 
 export function useLayerDecomposition(editor: Editor | null) {
@@ -136,7 +123,6 @@ export function useLayerDecomposition(editor: Editor | null) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
-  const managedPreviewsRef = useRef(new Map<TLAssetId, ManagedLayerPreview>())
   const mountedRef = useRef(true)
   const pendingRef = useRef(false)
   const editorRef = useRef(editor)
@@ -145,37 +131,12 @@ export function useLayerDecomposition(editor: Editor | null) {
     editorRef.current = editor
   }, [editor])
 
-  const unregisterPreview = useCallback((assetId: TLAssetId) => {
-    releaseLocalAsset(assetId)
-    managedPreviewsRef.current.delete(assetId)
-  }, [])
-
   useEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
     }
   }, [])
-
-  useEffect(() => {
-    if (!editor) return
-    const managedPreviews = managedPreviewsRef.current
-    const removeAfterAssetDelete =
-      editor.sideEffects.registerAfterDeleteHandler('asset', (asset) => {
-        const managed = managedPreviews.get(asset.id)
-        if (!managed) return
-        releaseLocalAsset(asset.id)
-        managedPreviews.delete(asset.id)
-      })
-
-    return () => {
-      removeAfterAssetDelete()
-      for (const assetId of managedPreviews.keys()) {
-        releaseLocalAsset(assetId)
-      }
-      managedPreviews.clear()
-    }
-  }, [editor])
 
   const startForShape = useCallback(
     async (nextShapeId: TLShapeId) => {
@@ -347,10 +308,7 @@ export function useLayerDecomposition(editor: Editor | null) {
           manifest,
           sourceBounds,
           editor.getCurrentPageId(),
-          (assetId, url) => {
-            managedPreviewsRef.current.set(assetId, { url })
-          },
-          unregisterPreview,
+          getProjectAssets(editor),
           isEditorActive,
         )
         const currentSourceShape = editor.getShape<TLImageShape>(sourceShape.id)
@@ -363,19 +321,14 @@ export function useLayerDecomposition(editor: Editor | null) {
           !currentResultShape ||
           currentResultShape.type !== 'image'
         ) {
-          for (const item of prepared) {
-            unregisterPreview(item.asset.id)
-          }
           throw new Error('分离期间图片副本已被删除')
         }
         const baseLayer = prepared.find((item) => item.zIndex === 0)
         if (!baseLayer) {
-          for (const item of prepared) unregisterPreview(item.asset.id)
           throw new Error('模型结果缺少底图')
         }
         const overlayLayers = prepared.filter((item) => item.zIndex > 0)
         if (!editor.canCreateShapes(overlayLayers.map((item) => item.shape))) {
-          for (const item of prepared) unregisterPreview(item.asset.id)
           throw new Error('画布元素已达到上限')
         }
 
@@ -456,7 +409,6 @@ export function useLayerDecomposition(editor: Editor | null) {
           editor.deleteAssets(
             createdAssetIds.filter((assetId) => editor.getAsset(assetId)),
           )
-          for (const assetId of createdAssetIds) unregisterPreview(assetId)
           throw writeError
         }
 
@@ -513,7 +465,7 @@ export function useLayerDecomposition(editor: Editor | null) {
         }
       }
     },
-    [editor, unregisterPreview],
+    [editor],
   )
 
   const openForShape = useCallback(

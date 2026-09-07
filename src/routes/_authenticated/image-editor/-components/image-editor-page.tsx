@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowLeft01Icon,
@@ -9,7 +9,8 @@ import {
   ViewIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { type Editor, getUserPreferences, useValue } from 'tldraw'
+import { type Editor, useValue } from 'tldraw'
+import { Save, RotateCw } from 'lucide-react'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
@@ -26,6 +27,7 @@ import { ExportDialog } from './export-dialog'
 import { LayerDecompositionProvider } from './layer-decomposition-provider'
 import { useImageImport } from './use-image-import'
 import { useLayerDecomposition } from './use-layer-decomposition'
+import { useProjectSession } from './use-project-session'
 
 function HistoryControls({ editor }: { editor: Editor | null }) {
   const canUndo = useValue(
@@ -121,12 +123,17 @@ function SnapControl({ editor }: { editor: Editor | null }) {
   )
 }
 
-export function ImageEditorPage() {
-  const [editor, setEditor] = useState<Editor | null>(null)
+export function ImageEditorPage({ projectId }: { projectId: string }) {
+  const busy = useRef(false)
+  const session = useProjectSession(projectId, busy)
+  const { editor } = session
   const [isExportOpen, setIsExportOpen] = useState(false)
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
     useImageImport(editor)
   const layerDecomposition = useLayerDecomposition(editor)
+  useEffect(() => {
+    busy.current = isImporting || layerDecomposition.isPending
+  }, [isImporting, layerDecomposition.isPending])
   const layerDecompositionContext = useMemo(
     () => ({
       isOpen: layerDecomposition.isOpen,
@@ -139,20 +146,30 @@ export function ImageEditorPage() {
       layerDecomposition.openForShape,
     ],
   )
-  const handleMount = useCallback((mountedEditor: Editor) => {
-    if (getUserPreferences().isSnapMode == null) {
-      mountedEditor.user.updateUserPreferences({ isSnapMode: true })
-    }
-
-    mountedEditor.centerOnPoint({ x: 0, y: 0 })
-    setEditor(mountedEditor)
-
-    return () => {
-      setEditor((currentEditor) =>
-        currentEditor === mountedEditor ? null : currentEditor,
-      )
-    }
-  }, [])
+  if (!session.loaded || session.loadError) {
+    return (
+      <section className="flex h-full flex-col items-center justify-center gap-4 p-6">
+        <p
+          className="max-w-lg break-words text-sm"
+          role={session.loadError ? 'alert' : 'status'}
+        >
+          {session.loadError ?? '正在读取项目…'}
+        </p>
+        {session.loadError ? (
+          <Button onClick={session.retry}>
+            <RotateCw data-icon="inline-start" />
+            重新读取
+          </Button>
+        ) : null}
+        <Link
+          to="/image-editor"
+          className={buttonVariants({ variant: 'ghost' })}
+        >
+          返回项目
+        </Link>
+      </section>
+    )
+  }
 
   return (
     <LayerDecompositionProvider value={layerDecompositionContext}>
@@ -181,6 +198,48 @@ export function ImageEditorPage() {
           </header>
 
           <div className="min-w-0 flex-1 text-center">
+            <p className="truncate text-sm font-medium">
+              {session.loaded.project.name}
+            </p>
+            <div className="pointer-events-auto flex items-center justify-center gap-1">
+              <p
+                className={cn(
+                  'min-w-0 break-words text-xs',
+                  session.saveError
+                    ? 'text-destructive'
+                    : 'text-muted-foreground',
+                )}
+                role={session.saveError ? 'alert' : 'status'}
+              >
+                {session.saveError ??
+                  {
+                    saved: '已保存',
+                    pending: '待保存',
+                    saving: '正在保存…',
+                    error: '保存失败',
+                  }[session.saveStatus]}
+              </p>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      aria-label="保存项目"
+                      disabled={
+                        session.saveStatus === 'saving' ||
+                        isImporting ||
+                        layerDecomposition.isPending
+                      }
+                      onClick={() => void session.save()}
+                      size="icon-xs"
+                      variant="ghost"
+                    />
+                  }
+                >
+                  <Save />
+                </TooltipTrigger>
+                <TooltipContent>保存项目</TooltipContent>
+              </Tooltip>
+            </div>
             {isImporting ? (
               <p
                 aria-live="polite"
@@ -242,7 +301,10 @@ export function ImageEditorPage() {
         </div>
 
         <main className="absolute inset-0 min-h-0 min-w-0">
-          <InfiniteCanvas onMount={handleMount} />
+          <InfiniteCanvas
+            onMount={session.onMount}
+            assets={session.loaded.assets.store}
+          />
         </main>
 
         <ImageEditorLayers editor={editor} onAddImages={openFileDialog} />

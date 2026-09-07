@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Add01Icon, Delete01Icon, SearchIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -16,46 +16,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-
-const PROJECTS_STORAGE_KEY = 'swimmeret-image-editor-projects'
-const TRASH_STORAGE_KEY = 'swimmeret-image-editor-trash'
-
-export interface ImageEditorProject {
-  id: string
-  name: string
-}
-
-const emptyProjects: Array<ImageEditorProject> = []
-
-function readStoredProjects(key: string) {
-  if (typeof window === 'undefined') return emptyProjects
-
-  try {
-    const stored = window.localStorage.getItem(key)
-    if (!stored) return emptyProjects
-    const projects = JSON.parse(stored) as unknown
-    return Array.isArray(projects)
-      ? (projects as Array<ImageEditorProject>)
-      : emptyProjects
-  } catch {
-    return emptyProjects
-  }
-}
-
-function writeStoredProjects(key: string, projects: Array<ImageEditorProject>) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(projects))
-  } catch {
-    // Storage can be unavailable in private or restricted environments.
-  }
-}
-
-function createProject(): ImageEditorProject {
-  return {
-    id: `project-${Date.now()}`,
-    name: '未命名项目',
-  }
-}
+import { RotateCcw } from 'lucide-react'
+import {
+  migrateLegacyProjects,
+  workspaceRepository,
+} from '@/lib/project-storage/repository'
+import { storageError, type ProjectSummary } from '@/lib/project-storage/types'
 
 function ProjectThumbnail({
   className,
@@ -84,24 +50,52 @@ function ProjectItem({
   onDelete,
   onSelect,
   selected,
+  onRestore,
+  disabled,
 }: {
-  project: ImageEditorProject
+  project: ProjectSummary
   onDelete: () => void
   onSelect: (checked: boolean) => void
   selected: boolean
+  onRestore: () => void
+  disabled: boolean
 }) {
   return (
     <article className="group/item min-w-0">
       <div className="relative">
-        <Link
-          aria-label={`打开项目 ${project.name}`}
-          className="block"
-          params={{ id: project.id }}
-          preload="intent"
-          to="/image-editor/$id"
-        >
-          <ProjectThumbnail className="group-hover/bg-secondary" />
-        </Link>
+        {project.trashed ? (
+          <div className="aspect-5/3 rounded-xl bg-muted" />
+        ) : (
+          <Link
+            aria-label={`打开项目 ${project.name}`}
+            className="block"
+            params={{ id: project.id }}
+            preload="intent"
+            to="/image-editor/$id"
+          >
+            <ProjectThumbnail className="group-hover/bg-secondary" />
+          </Link>
+        )}
+
+        {project.trashed ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label={`恢复项目 ${project.name}`}
+                  disabled={disabled}
+                  className="absolute right-12 bottom-2"
+                  onClick={onRestore}
+                  size="icon"
+                  variant="secondary"
+                />
+              }
+            >
+              <RotateCcw />
+            </TooltipTrigger>
+            <TooltipContent>恢复项目</TooltipContent>
+          </Tooltip>
+        ) : null}
 
         <Checkbox
           aria-label={`选择项目 ${project.name}`}
@@ -117,6 +111,7 @@ function ProjectItem({
                 aria-label={`删除项目 ${project.name}`}
                 className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
                 onClick={onDelete}
+                disabled={disabled}
                 size="icon"
                 variant="destructive"
               />
@@ -137,68 +132,75 @@ function ProjectItem({
 
 export function ImageEditorProjectsPage() {
   const navigate = useNavigate()
-  const [projects, setProjects] = useState<Array<ImageEditorProject>>(() =>
-    readStoredProjects(PROJECTS_STORAGE_KEY),
-  )
-  const [trashedProjects, setTrashedProjects] = useState<
-    Array<ImageEditorProject>
-  >(() => readStoredProjects(TRASH_STORAGE_KEY))
+  const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isPending, setIsPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'mine' | 'trash'>('mine')
   const [query, setQuery] = useState('')
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     () => new Set(),
   )
 
-  useEffect(() => {
-    writeStoredProjects(PROJECTS_STORAGE_KEY, projects)
-  }, [projects])
+  const reload = useCallback(async () => {
+    await migrateLegacyProjects()
+    setProjects(
+      (await workspaceRepository.projects.list()).sort(
+        (a, b) => b.updatedAt - a.updatedAt,
+      ),
+    )
+  }, [])
 
   useEffect(() => {
-    writeStoredProjects(TRASH_STORAGE_KEY, trashedProjects)
-  }, [trashedProjects])
+    void migrateLegacyProjects()
+      .then(() => workspaceRepository.projects.list())
+      .then((projects) =>
+        setProjects(projects.sort((a, b) => b.updatedAt - a.updatedAt)),
+      )
+      .catch((error: unknown) => setError(storageError(error)))
+      .finally(() => setIsLoading(false))
+  }, [])
 
   const visibleProjects = useMemo(() => {
-    const source = view === 'mine' ? projects : trashedProjects
+    const source = projects.filter(
+      (project) => project.trashed === (view === 'trash'),
+    )
     const normalizedQuery = query.trim().toLocaleLowerCase()
     if (!normalizedQuery) return source
     return source.filter((project) =>
       project.name.toLocaleLowerCase().includes(normalizedQuery),
     )
-  }, [projects, query, trashedProjects, view])
+  }, [projects, query, view])
 
-  const handleCreateProject = () => {
-    const project = createProject()
-    const nextProjects = [project, ...projects]
-    setProjects(nextProjects)
-    writeStoredProjects(PROJECTS_STORAGE_KEY, nextProjects)
-    void navigate({ to: '/image-editor/$id', params: { id: project.id } })
-  }
-
-  const handleDeleteProject = (project: ImageEditorProject) => {
-    if (view === 'trash') {
-      const nextTrash = trashedProjects.filter((item) => item.id !== project.id)
-      setTrashedProjects(nextTrash)
-      setSelectedProjectIds((current) => {
-        const next = new Set(current)
-        next.delete(project.id)
-        return next
-      })
-      writeStoredProjects(TRASH_STORAGE_KEY, nextTrash)
-      return
+  const mutate = async (action: () => Promise<void>) => {
+    if (isPending || isLoading) return
+    setIsPending(true)
+    setError(null)
+    try {
+      await action()
+      await reload()
+    } catch (error) {
+      setError(storageError(error))
+    } finally {
+      setIsPending(false)
     }
-
-    const nextProjects = projects.filter((item) => item.id !== project.id)
-    const nextTrash = [project, ...trashedProjects]
-    setProjects(nextProjects)
-    setTrashedProjects(nextTrash)
-    setSelectedProjectIds((current) => {
-      const next = new Set(current)
-      next.delete(project.id)
-      return next
-    })
-    writeStoredProjects(PROJECTS_STORAGE_KEY, nextProjects)
-    writeStoredProjects(TRASH_STORAGE_KEY, nextTrash)
   }
+
+  const handleCreateProject = () =>
+    void mutate(async () => {
+      const project = await workspaceRepository.projects.create({
+        id: crypto.randomUUID(),
+        name: '未命名项目',
+        trashed: false,
+      })
+      await navigate({ to: '/image-editor/$id', params: { id: project.id } })
+    })
+
+  const handleDeleteProject = (project: ProjectSummary) =>
+    void mutate(async () => {
+      if (project.trashed) await workspaceRepository.projects.delete(project.id)
+      else await workspaceRepository.projects.setTrashed(project.id, true)
+    })
 
   return (
     <section className="h-full min-h-0 overflow-y-auto bg-background">
@@ -238,6 +240,21 @@ export function ImageEditorProjectsPage() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-6 pt-8 pb-14 sm:px-10">
+        {isLoading ? (
+          <p className="mb-4 text-sm text-muted-foreground" role="status">
+            正在读取项目…
+          </p>
+        ) : null}
+        {error ? (
+          <div className="mb-4 flex items-center gap-2">
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+            <Button variant="ghost" onClick={() => void mutate(reload)}>
+              重试
+            </Button>
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4 xl:grid-cols-5">
           {view === 'mine' && !query.trim() ? (
             <article className="group/item min-w-0">
@@ -257,6 +274,12 @@ export function ImageEditorProjectsPage() {
             <ProjectItem
               key={project.id}
               onDelete={() => handleDeleteProject(project)}
+              onRestore={() =>
+                void mutate(() =>
+                  workspaceRepository.projects.setTrashed(project.id, false),
+                )
+              }
+              disabled={isPending}
               onSelect={(checked) => {
                 setSelectedProjectIds((current) => {
                   const next = new Set(current)
