@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import {
-  Add01Icon,
-  Delete01Icon,
-  ImageIcon,
-  SearchIcon,
-} from '@hugeicons/core-free-icons'
+import { Add01Icon, Delete01Icon, SearchIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
 import { Button } from '@/components/ui/button'

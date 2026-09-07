@@ -1,4 +1,5 @@
 const AUTH_STORAGE_KEY = 'swimmeret-auth-key'
+export const LOGIN_REVEAL_STORAGE_KEY = 'swimmeret-login-reveal'
 
 export function hasAuthKey() {
   if (typeof window === 'undefined') {
