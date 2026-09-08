@@ -30,24 +30,61 @@ import {
   workspaceRepository,
 } from '@/lib/project-storage/repository'
 import { storageError, type ProjectSummary } from '@/lib/project-storage/types'
+import { readProjectPreview } from '@/lib/project-preview'
 
 import { ProjectSelectionDock } from './project-selection-dock'
 
 function ProjectThumbnail({
   className,
-  children,
+  project,
 }: {
   className?: string
-  children?: React.ReactNode
+  project: ProjectSummary
 }) {
+  const cacheKey = `${project.id}:${project.updatedAt}`
+  const [preview, setPreview] = useState<{
+    cacheKey: string
+    url: string
+  } | null>(null)
+  const previewUrl = preview?.cacheKey === cacheKey ? preview.url : null
+
+  useEffect(() => {
+    let active = true
+    let objectUrl: string | undefined
+    void readProjectPreview(project.id, workspaceRepository.assets)
+      .then((blob) => {
+        const nextUrl = URL.createObjectURL(blob)
+        if (!active) {
+          URL.revokeObjectURL(nextUrl)
+          return
+        }
+        objectUrl = nextUrl
+        setPreview({ cacheKey, url: nextUrl })
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [cacheKey, project.id])
+
   return (
     <div
       className={cn(
-        'relative flex aspect-5/3 w-full cursor-pointer rounded-xl items-center justify-center overflow-hidden bg-muted',
+        'relative flex aspect-5/3 w-full items-center justify-center overflow-hidden rounded-xl bg-muted',
         className,
       )}
     >
-      {children}
+      {previewUrl ? (
+        <img
+          alt=""
+          className="size-full object-contain"
+          decoding="async"
+          draggable={false}
+          loading="lazy"
+          src={previewUrl}
+        />
+      ) : null}
     </div>
   )
 }
@@ -75,7 +112,7 @@ function ProjectItem({
     <article className="group/item min-w-0">
       <div className="relative">
         {project.trashed ? (
-          <div className="aspect-5/3 rounded-xl bg-muted" />
+          <ProjectThumbnail project={project} />
         ) : (
           <Link
             aria-label={`打开项目 ${project.name}`}
@@ -98,7 +135,7 @@ function ProjectItem({
                 onOpen(event.currentTarget.firstElementChild as HTMLElement)
             }}
           >
-            <ProjectThumbnail />
+            <ProjectThumbnail project={project} />
           </Link>
         )}
 

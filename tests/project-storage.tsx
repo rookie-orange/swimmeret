@@ -15,6 +15,10 @@ import {
 import { browserRepository } from '../src/lib/project-storage/browser-repository'
 import { assetStorageKey } from '../src/lib/project-storage/types'
 import { projectShapeUtils } from '../src/lib/project-image-shape'
+import {
+  readProjectPreview,
+  writeProjectPreview,
+} from '../src/lib/project-preview'
 
 const results = document.getElementById('results')!
 const container = document.getElementById('canvas')!
@@ -143,6 +147,15 @@ try {
   editor.setCamera({ x: 84, y: 126, z: 1.5 })
   const camera = { ...editor.getCamera() }
   const saved = await repo.projects.save(projectId, editor.getSnapshot(), 0)
+  await writeProjectPreview(editor, projectId, repo.assets)
+  const projectPreview = await createImageBitmap(
+    await readProjectPreview(projectId, repo.assets),
+  )
+  check(
+    projectPreview.width > 0 && projectPreview.height > 0,
+    'project preview is exported and stored as a decodable image',
+  )
+  projectPreview.close()
   check(
     (await repo.projects.load(secondId)).snapshot === null,
     'project snapshots are isolated',

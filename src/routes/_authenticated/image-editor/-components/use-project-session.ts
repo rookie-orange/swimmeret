@@ -19,6 +19,7 @@ import {
   workspaceRepository,
 } from '@/lib/project-storage/repository'
 import { storageError, type ProjectFile } from '@/lib/project-storage/types'
+import { writeProjectPreview } from '@/lib/project-preview'
 
 interface LoadedProject {
   project: ProjectFile
@@ -36,6 +37,25 @@ export function useProjectSession(
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [attempt, setAttempt] = useState(0)
   const autosave = useRef<ProjectAutosave | null>(null)
+  const editorRef = useRef<Editor | null>(null)
+  const previewWrite = useRef<Promise<void>>(Promise.resolve())
+
+  const refreshPreview = useCallback(() => {
+    const mounted = editorRef.current
+    if (!mounted) return Promise.resolve()
+    const nextWrite = previewWrite.current
+      .catch(() => {})
+      .then(() => {
+        if (editorRef.current !== mounted) return
+        return writeProjectPreview(
+          mounted,
+          projectId,
+          workspaceRepository.assets,
+        )
+      })
+    previewWrite.current = nextWrite
+    return nextWrite
+  }, [projectId])
 
   useEffect(() => {
     let active = true
@@ -126,15 +146,18 @@ export function useProjectSession(
         },
         { scope: 'all' },
       )
+      editorRef.current = mounted
       setEditor(mounted)
+      void refreshPreview().catch(() => {})
       return () => {
         active = false
         unlisten()
         saver.dispose()
+        if (editorRef.current === mounted) editorRef.current = null
         if (autosave.current === saver) autosave.current = null
       }
     },
-    [loaded],
+    [loaded, refreshPreview],
   )
 
   const flush = useCallback(async () => {
@@ -144,11 +167,16 @@ export function useProjectSession(
     }
     try {
       await autosave.current?.flush()
-      return true
     } catch {
       return false
     }
-  }, [busyRef])
+    try {
+      await refreshPreview()
+    } catch (error) {
+      setSaveError(`项目已保存，但无法更新预览：${storageError(error)}`)
+    }
+    return true
+  }, [busyRef, refreshPreview])
 
   useBlocker({
     shouldBlockFn: async () => !(await flush()),
@@ -159,8 +187,7 @@ export function useProjectSession(
 
   useEffect(() => {
     const onHidden = () => {
-      if (document.visibilityState === 'hidden')
-        void autosave.current?.flush().catch(() => {})
+      if (document.visibilityState === 'hidden') void flush().catch(() => {})
     }
     document.addEventListener('visibilitychange', onHidden)
     if (!isTauri())

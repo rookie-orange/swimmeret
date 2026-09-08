@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "test:storage": "node --experimental-transform-types --test src/lib/project-storage/autosave.test.ts",
+    "test:storage": "node --experimental-transform-types --test src/lib/project-storage/autosave.test.ts src/lib/project-preview.test.ts",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
