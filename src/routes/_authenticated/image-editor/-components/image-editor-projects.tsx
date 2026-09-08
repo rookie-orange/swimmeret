@@ -46,13 +46,23 @@ function ProjectThumbnail({
     cacheKey: string
     url: string
   } | null>(null)
+  const [previewState, setPreviewState] = useState<{
+    cacheKey: string
+    status: 'loading' | 'ready' | 'missing'
+  } | null>(null)
+  const previewStatus =
+    previewState?.cacheKey === cacheKey ? previewState.status : 'loading'
   const previewUrl = preview?.cacheKey === cacheKey ? preview.url : null
 
   useEffect(() => {
     let active = true
     let objectUrl: string | undefined
-    void readProjectPreview(project.id, workspaceRepository.assets)
-      .then((blob) => {
+    void (async () => {
+      try {
+        const blob = await readProjectPreview(
+          project.id,
+          workspaceRepository.assets,
+        )
         const nextUrl = URL.createObjectURL(blob)
         if (!active) {
           URL.revokeObjectURL(nextUrl)
@@ -60,8 +70,12 @@ function ProjectThumbnail({
         }
         objectUrl = nextUrl
         setPreview({ cacheKey, url: nextUrl })
-      })
-      .catch(() => {})
+        setPreviewState({ cacheKey, status: 'ready' })
+      } catch {
+        if (active) setPreviewState({ cacheKey, status: 'missing' })
+      }
+    })()
+
     return () => {
       active = false
       if (objectUrl) URL.revokeObjectURL(objectUrl)
@@ -70,6 +84,7 @@ function ProjectThumbnail({
 
   return (
     <div
+      data-preview-state={previewStatus}
       className={cn(
         'relative flex aspect-5/3 w-full items-center justify-center overflow-hidden rounded-xl bg-muted',
         className,
@@ -271,6 +286,33 @@ export function ImageEditorProjectsPage() {
       const viewport = container.getBoundingClientRect()
       if (bounds.top < viewport.top || bounds.bottom > viewport.bottom) {
         target.scrollIntoView({ block: 'center', behavior: 'instant' })
+      }
+
+      // Keep the return animation from racing the thumbnail's async decode.
+      // The editor snapshot remains visible while the target settles.
+      if (target.dataset.previewState === 'loading') {
+        let cancelled = false
+        const waitForPreview = () => {
+          if (cancelled) return
+          if (target.dataset.previewState === 'loading') {
+            setTimeout(waitForPreview, 16)
+            return
+          }
+          const image = target.querySelector('img')
+          if (image) {
+            image.loading = 'eager'
+            void (async () => {
+              await image.decode().catch(() => {})
+              if (!cancelled) finishReturn(target)
+            })()
+            return
+          }
+          if (!cancelled) finishReturn(target)
+        }
+        waitForPreview()
+        return () => {
+          cancelled = true
+        }
       }
     }
     finishReturn(target)

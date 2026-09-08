@@ -160,7 +160,6 @@ export function ProjectEntryTransitionProvider({
       if (active.current) return
       const rect = source.getBoundingClientRect()
       const appearance = getComputedStyle(source)
-      const backgroundColor = appearance.backgroundColor
       const radius = appearance.borderRadius
       const entry: Entry = { direction: 'enter', projectId: null }
       active.current = entry
@@ -175,7 +174,9 @@ export function ProjectEntryTransitionProvider({
             [
               {
                 clipPath: `inset(${rect.top}px ${window.innerWidth - rect.right}px ${window.innerHeight - rect.bottom}px ${rect.left}px round ${radius})`,
-                backgroundColor,
+                // Keep the thumbnail preview visible in the source card's
+                // first frame instead of covering it with a solid fill.
+                backgroundColor: 'transparent',
               },
               {
                 clipPath: 'inset(0px round 0px)',
@@ -223,6 +224,9 @@ export function ProjectEntryTransitionProvider({
       ).matches
       const rect = target?.getBoundingClientRect()
       const appearance = target ? getComputedStyle(target) : null
+      const targetBackgroundColor = target?.querySelector('img')
+        ? 'transparent'
+        : appearance?.backgroundColor
       const duration = reducedMotion ? 0 : rect ? 520 : 180
       entry.animation = element.animate(
         rect && appearance
@@ -233,7 +237,7 @@ export function ProjectEntryTransitionProvider({
               },
               {
                 clipPath: `inset(${rect.top}px ${window.innerWidth - rect.right}px ${window.innerHeight - rect.bottom}px ${rect.left}px round ${appearance.borderRadius})`,
-                backgroundColor: appearance.backgroundColor,
+                backgroundColor: targetBackgroundColor,
               },
             ]
           : [{ opacity: 1 }, { opacity: 0 }],

@@ -39,10 +39,16 @@ export function useProjectSession(
   const autosave = useRef<ProjectAutosave | null>(null)
   const editorRef = useRef<Editor | null>(null)
   const previewWrite = useRef<Promise<void>>(Promise.resolve())
+  const previewDirty = useRef(false)
+  const previewVersion = useRef(0)
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const previewIdle = useRef<number | null>(null)
+  const previewIdleFallback = useRef(false)
 
   const refreshPreview = useCallback(() => {
     const mounted = editorRef.current
     if (!mounted) return Promise.resolve()
+    const version = previewVersion.current
     const nextWrite = previewWrite.current
       .catch(() => {})
       .then(() => {
@@ -51,11 +57,51 @@ export function useProjectSession(
           mounted,
           projectId,
           workspaceRepository.assets,
-        )
+        ).then(() => {
+          if (
+            editorRef.current === mounted &&
+            previewVersion.current === version
+          )
+            previewDirty.current = false
+        })
       })
     previewWrite.current = nextWrite
     return nextWrite
   }, [projectId])
+
+  const schedulePreviewRefresh = useCallback(
+    (delay = 750) => {
+      if (previewTimer.current) clearTimeout(previewTimer.current)
+      previewTimer.current = setTimeout(() => {
+        previewTimer.current = null
+        const run = () => {
+          previewIdle.current = null
+          void refreshPreview().catch(() => {})
+        }
+        if (typeof requestIdleCallback === 'function') {
+          previewIdleFallback.current = false
+          previewIdle.current = requestIdleCallback(run, { timeout: delay })
+        } else {
+          previewIdleFallback.current = true
+          previewIdle.current = window.setTimeout(run, 0)
+        }
+      }, delay)
+    },
+    [refreshPreview],
+  )
+  const cancelScheduledPreview = useCallback(() => {
+    if (previewTimer.current) {
+      clearTimeout(previewTimer.current)
+      previewTimer.current = null
+    }
+    if (previewIdle.current !== null) {
+      if (previewIdleFallback.current) clearTimeout(previewIdle.current)
+      else if (typeof cancelIdleCallback === 'function')
+        cancelIdleCallback(previewIdle.current)
+      previewIdle.current = null
+      previewIdleFallback.current = false
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -141,45 +187,62 @@ export function useProjectSession(
                 record.typeName !== 'pointer' &&
                 record.typeName !== 'instance_presence',
             )
-          )
+          ) {
+            previewDirty.current = true
+            previewVersion.current += 1
             saver.schedule()
+            schedulePreviewRefresh(1000)
+          }
         },
         { scope: 'all' },
       )
       editorRef.current = mounted
+      previewDirty.current = true
+      previewVersion.current += 1
       setEditor(mounted)
-      void refreshPreview().catch(() => {})
+      // Exporting the preview is CPU-heavy; let the editor's first transition
+      // finish before doing the initial export.
+      schedulePreviewRefresh()
       return () => {
         active = false
         unlisten()
         saver.dispose()
+        cancelScheduledPreview()
         if (editorRef.current === mounted) editorRef.current = null
         if (autosave.current === saver) autosave.current = null
       }
     },
-    [loaded, refreshPreview],
+    [cancelScheduledPreview, loaded, schedulePreviewRefresh],
   )
 
-  const flush = useCallback(async () => {
-    if (busyRef.current) {
-      setSaveError('图片任务尚未完成，请稍后再离开')
-      return false
-    }
-    try {
-      await autosave.current?.flush()
-    } catch {
-      return false
-    }
-    try {
-      await refreshPreview()
-    } catch (error) {
-      setSaveError(`项目已保存，但无法更新预览：${storageError(error)}`)
-    }
-    return true
-  }, [busyRef, refreshPreview])
+  const flush = useCallback(
+    async ({ waitForPreview = true }: { waitForPreview?: boolean } = {}) => {
+      if (busyRef.current) {
+        setSaveError('图片任务尚未完成，请稍后再离开')
+        return false
+      }
+      cancelScheduledPreview()
+      try {
+        await autosave.current?.flush()
+      } catch {
+        return false
+      }
+      if (waitForPreview && previewDirty.current) {
+        try {
+          await refreshPreview()
+        } catch (error) {
+          setSaveError(`项目已保存，但无法更新预览：${storageError(error)}`)
+        }
+      }
+      return true
+    },
+    [busyRef, cancelScheduledPreview, refreshPreview],
+  )
 
   useBlocker({
-    shouldBlockFn: async () => !(await flush()),
+    // Preview export is supplementary to the project snapshot. Do not hold
+    // up the route transition while rasterizing a PNG on the main thread.
+    shouldBlockFn: async () => !(await flush({ waitForPreview: false })),
     enableBeforeUnload: () =>
       busyRef.current ||
       Boolean(loaded?.assets.hasPending || autosave.current?.hasChanges()),
