@@ -31,6 +31,8 @@ import {
 } from '@/lib/project-storage/repository'
 import { storageError, type ProjectSummary } from '@/lib/project-storage/types'
 
+import { ProjectSelectionDock } from './project-selection-dock'
+
 function ProjectThumbnail({
   className,
   children,
@@ -55,6 +57,7 @@ function ProjectItem({
   onDelete,
   onSelect,
   selected,
+  selectionMode,
   onRestore,
   disabled,
   onOpen,
@@ -63,6 +66,7 @@ function ProjectItem({
   onDelete: () => void
   onSelect: (checked: boolean) => void
   selected: boolean
+  selectionMode: boolean
   onRestore: () => void
   disabled: boolean
   onOpen: (source: HTMLElement) => void
@@ -98,14 +102,14 @@ function ProjectItem({
           </Link>
         )}
 
-        {project.trashed ? (
+        {project.trashed && !selectionMode ? (
           <Tooltip>
             <TooltipTrigger
               render={
                 <Button
                   aria-label={`恢复项目 ${project.name}`}
                   disabled={disabled}
-                  className="absolute right-12 bottom-2"
+                  className="absolute right-12 bottom-2 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
                   onClick={onRestore}
                   size="icon"
                   variant="secondary"
@@ -122,27 +126,32 @@ function ProjectItem({
           aria-label={`选择项目 ${project.name}`}
           checked={selected}
           disabled={disabled}
-          className="absolute top-3 left-3 size-5 bg-background opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
+          className={cn(
+            'absolute top-3 left-3 size-5 bg-background opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100',
+            selectionMode && 'opacity-100',
+          )}
           onCheckedChange={(checked) => onSelect(checked === true)}
         />
 
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label={`删除项目 ${project.name}`}
-                className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
-                onClick={onDelete}
-                disabled={disabled}
-                size="icon"
-                variant="destructive"
-              />
-            }
-          >
-            <HugeiconsIcon icon={Delete01Icon} />
-          </TooltipTrigger>
-          <TooltipContent>删除项目</TooltipContent>
-        </Tooltip>
+        {selectionMode ? null : (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label={`删除项目 ${project.name}`}
+                  className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
+                  onClick={onDelete}
+                  disabled={disabled}
+                  size="icon"
+                  variant="destructive"
+                />
+              }
+            >
+              <HugeiconsIcon icon={Delete01Icon} />
+            </TooltipTrigger>
+            <TooltipContent>删除项目</TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       <p className="mt-3 truncate text-sm font-medium text-foreground">
@@ -202,6 +211,16 @@ export function ImageEditorProjectsPage() {
     )
   }, [projects, query, view])
 
+  const selectionMode = selectedProjectIds.size > 0
+  const selectedVisibleProjects = visibleProjects.filter((project) =>
+    selectedProjectIds.has(project.id),
+  )
+  const allVisibleSelected =
+    visibleProjects.length > 0 &&
+    visibleProjects.every((project) => selectedProjectIds.has(project.id))
+  const partiallyVisibleSelected =
+    selectedVisibleProjects.length > 0 && !allVisibleSelected
+
   useLayoutEffect(() => {
     const container = list.current
     if (isLoading || !returningProjectId || !container) return
@@ -257,6 +276,18 @@ export function ImageEditorProjectsPage() {
       else await workspaceRepository.projects.setTrashed(project.id, true)
     })
 
+  const handleDeleteSelected = () =>
+    void mutate(async () => {
+      await Promise.all(
+        selectedVisibleProjects.map((project) =>
+          project.trashed
+            ? workspaceRepository.projects.delete(project.id)
+            : workspaceRepository.projects.setTrashed(project.id, true),
+        ),
+      )
+      setSelectedProjectIds(new Set())
+    })
+
   return (
     <section
       className="h-full min-h-0 overflow-y-auto bg-background"
@@ -268,7 +299,10 @@ export function ImageEditorProjectsPage() {
             aria-current={view === 'mine' ? 'page' : undefined}
             aria-pressed={view === 'mine'}
             className="rounded-full px-4"
-            onClick={() => setView('mine')}
+            onClick={() => {
+              setView('mine')
+              setSelectedProjectIds(new Set())
+            }}
             variant={view === 'mine' ? 'secondary' : 'ghost'}
           >
             我的
@@ -277,7 +311,10 @@ export function ImageEditorProjectsPage() {
             aria-current={view === 'trash' ? 'page' : undefined}
             aria-pressed={view === 'trash'}
             className="rounded-full px-4"
-            onClick={() => setView('trash')}
+            onClick={() => {
+              setView('trash')
+              setSelectedProjectIds(new Set())
+            }}
             variant={view === 'trash' ? 'secondary' : 'ghost'}
           >
             回收站
@@ -290,14 +327,22 @@ export function ImageEditorProjectsPage() {
           </InputGroupAddon>
           <InputGroupInput
             aria-label="搜索项目"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setSelectedProjectIds(new Set())
+            }}
             placeholder="搜索项目"
             value={query}
           />
         </InputGroup>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-6 pt-8 pb-14 sm:px-10">
+      <main
+        className={cn(
+          'mx-auto w-full max-w-6xl px-6 pt-8 pb-14 sm:px-10',
+          selectionMode && 'pb-24',
+        )}
+      >
         {isLoading ? (
           <p className="mb-4 text-sm text-muted-foreground" role="status">
             正在读取项目…
@@ -345,6 +390,7 @@ export function ImageEditorProjectsPage() {
                 )
               }
               disabled={isPending}
+              selectionMode={selectionMode}
               onOpen={(source) => {
                 rememberPosition()
                 setError(null)
@@ -376,6 +422,24 @@ export function ImageEditorProjectsPage() {
           </div>
         ) : null}
       </main>
+
+      <ProjectSelectionDock
+        allSelected={allVisibleSelected}
+        disabled={isPending}
+        isTrash={view === 'trash'}
+        onClear={() => setSelectedProjectIds(new Set())}
+        onDelete={handleDeleteSelected}
+        onToggleAll={(checked) => {
+          setSelectedProjectIds(
+            checked
+              ? new Set(visibleProjects.map((project) => project.id))
+              : new Set(),
+          )
+        }}
+        open={selectionMode}
+        partiallySelected={partiallyVisibleSelected}
+        selectedCount={selectedVisibleProjects.length}
+      />
     </section>
   )
 }
