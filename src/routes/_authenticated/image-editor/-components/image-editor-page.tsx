@@ -10,9 +10,10 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { type Editor, useValue } from 'tldraw'
-import { Save, RotateCw } from 'lucide-react'
+import { RotateCw } from 'lucide-react'
 
 import { Button, buttonVariants } from '@/components/ui/button'
+import { useProjectEntryTransition } from '@/components/project-entry-transition'
 import {
   Tooltip,
   TooltipContent,
@@ -127,6 +128,10 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
   const busy = useRef(false)
   const session = useProjectSession(projectId, busy)
   const { editor } = session
+  const { reveal } = useProjectEntryTransition()
+  useEffect(() => {
+    if (editor || session.loadError) reveal(projectId)
+  }, [editor, session.loadError, projectId, reveal])
   const [isExportOpen, setIsExportOpen] = useState(false)
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
     useImageImport(editor)
@@ -183,63 +188,24 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
           type="file"
         />
 
-        <div className="pointer-events-none absolute top-2 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:top-4 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
-          <header className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+        <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
+          <header className="pointer-events-auto flex min-w-0 max-w-40 items-center rounded-full border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl sm:max-w-xs lg:max-w-sm">
             <Link
-              aria-label="返回图片编辑项目"
+              aria-label={`返回图片编辑项目：${session.loaded.project.name}`}
               className={cn(
-                buttonVariants({ size: 'icon', variant: 'ghost' }),
-                'shrink-0 rounded-full text-muted-foreground',
+                buttonVariants({ variant: 'ghost' }),
+                'min-w-0 shrink rounded-full text-muted-foreground',
               )}
               to="/image-editor"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} />
+              <HugeiconsIcon data-icon="inline-start" icon={ArrowLeft01Icon} />
+              <span className="truncate text-sm font-medium text-foreground">
+                {session.loaded.project.name}
+              </span>
             </Link>
           </header>
 
           <div className="min-w-0 flex-1 text-center">
-            <p className="truncate text-sm font-medium">
-              {session.loaded.project.name}
-            </p>
-            <div className="pointer-events-auto flex items-center justify-center gap-1">
-              <p
-                className={cn(
-                  'min-w-0 break-words text-xs',
-                  session.saveError
-                    ? 'text-destructive'
-                    : 'text-muted-foreground',
-                )}
-                role={session.saveError ? 'alert' : 'status'}
-              >
-                {session.saveError ??
-                  {
-                    saved: '已保存',
-                    pending: '待保存',
-                    saving: '正在保存…',
-                    error: '保存失败',
-                  }[session.saveStatus]}
-              </p>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      aria-label="保存项目"
-                      disabled={
-                        session.saveStatus === 'saving' ||
-                        isImporting ||
-                        layerDecomposition.isPending
-                      }
-                      onClick={() => void session.save()}
-                      size="icon-xs"
-                      variant="ghost"
-                    />
-                  }
-                >
-                  <Save />
-                </TooltipTrigger>
-                <TooltipContent>保存项目</TooltipContent>
-              </Tooltip>
-            </div>
             {isImporting ? (
               <p
                 aria-live="polite"

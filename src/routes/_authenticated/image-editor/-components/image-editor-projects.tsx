@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { Link } from '@tanstack/react-router'
 import { Add01Icon, Delete01Icon, SearchIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
 import { Button } from '@/components/ui/button'
+import { useProjectEntryTransition } from '@/components/project-entry-transition'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   InputGroup,
@@ -26,22 +34,19 @@ import { storageError, type ProjectSummary } from '@/lib/project-storage/types'
 function ProjectThumbnail({
   className,
   children,
-  onClick,
 }: {
   className?: string
   children?: React.ReactNode
-  onClick?: () => void
 }) {
   return (
-    <button
+    <div
       className={cn(
         'relative flex aspect-5/3 w-full cursor-pointer rounded-xl items-center justify-center overflow-hidden bg-muted',
         className,
       )}
-      onClick={onClick}
     >
       {children}
-    </button>
+    </div>
   )
 }
 
@@ -52,6 +57,7 @@ function ProjectItem({
   selected,
   onRestore,
   disabled,
+  onOpen,
 }: {
   project: ProjectSummary
   onDelete: () => void
@@ -59,6 +65,7 @@ function ProjectItem({
   selected: boolean
   onRestore: () => void
   disabled: boolean
+  onOpen: (source: HTMLElement) => void
 }) {
   return (
     <article className="group/item min-w-0">
@@ -69,11 +76,25 @@ function ProjectItem({
           <Link
             aria-label={`打开项目 ${project.name}`}
             className="block"
+            data-project-id={project.id}
             params={{ id: project.id }}
             preload="intent"
             to="/image-editor/$id"
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return
+              event.preventDefault()
+              if (!disabled)
+                onOpen(event.currentTarget.firstElementChild as HTMLElement)
+            }}
           >
-            <ProjectThumbnail className="group-hover/bg-secondary" />
+            <ProjectThumbnail />
           </Link>
         )}
 
@@ -100,6 +121,7 @@ function ProjectItem({
         <Checkbox
           aria-label={`选择项目 ${project.name}`}
           checked={selected}
+          disabled={disabled}
           className="absolute top-3 left-3 size-5 bg-background opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100"
           onCheckedChange={(checked) => onSelect(checked === true)}
         />
@@ -131,13 +153,21 @@ function ProjectItem({
 }
 
 export function ImageEditorProjectsPage() {
-  const navigate = useNavigate()
+  const {
+    enter,
+    isEntering,
+    returningProjectId,
+    finishReturn,
+    listView,
+    rememberListView,
+  } = useProjectEntryTransition()
+  const list = useRef<HTMLElement>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'mine' | 'trash'>('mine')
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(listView.query)
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     () => new Set(),
   )
@@ -172,6 +202,27 @@ export function ImageEditorProjectsPage() {
     )
   }, [projects, query, view])
 
+  useLayoutEffect(() => {
+    const container = list.current
+    if (isLoading || !returningProjectId || !container) return
+    container.scrollTop = listView.scrollTop
+    const link = container.querySelector<HTMLAnchorElement>(
+      `[data-project-id="${CSS.escape(returningProjectId)}"]`,
+    )
+    const target = link?.firstElementChild as HTMLElement | null
+    if (target) {
+      const bounds = target.getBoundingClientRect()
+      const viewport = container.getBoundingClientRect()
+      if (bounds.top < viewport.top || bounds.bottom > viewport.bottom) {
+        target.scrollIntoView({ block: 'center', behavior: 'instant' })
+      }
+    }
+    finishReturn(target)
+  }, [isLoading, returningProjectId, listView.scrollTop, finishReturn])
+
+  const rememberPosition = () =>
+    rememberListView({ query, scrollTop: list.current?.scrollTop ?? 0 })
+
   const mutate = async (action: () => Promise<void>) => {
     if (isPending || isLoading) return
     setIsPending(true)
@@ -186,15 +237,19 @@ export function ImageEditorProjectsPage() {
     }
   }
 
-  const handleCreateProject = () =>
-    void mutate(async () => {
+  const handleCreateProject = (source: HTMLElement) => {
+    if (isPending || isLoading || isEntering) return
+    rememberPosition()
+    setError(null)
+    void enter(source, async () => {
       const project = await workspaceRepository.projects.create({
         id: crypto.randomUUID(),
         name: '未命名项目',
         trashed: false,
       })
-      await navigate({ to: '/image-editor/$id', params: { id: project.id } })
-    })
+      return project.id
+    }).catch((error: unknown) => setError(storageError(error)))
+  }
 
   const handleDeleteProject = (project: ProjectSummary) =>
     void mutate(async () => {
@@ -203,7 +258,10 @@ export function ImageEditorProjectsPage() {
     })
 
   return (
-    <section className="h-full min-h-0 overflow-y-auto bg-background">
+    <section
+      className="h-full min-h-0 overflow-y-auto bg-background"
+      ref={list}
+    >
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 pt-8 sm:px-10 sm:pt-10">
         <nav aria-label="项目范围" className="flex items-center gap-1">
           <Button
@@ -258,12 +316,19 @@ export function ImageEditorProjectsPage() {
         <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4 xl:grid-cols-5">
           {view === 'mine' && !query.trim() ? (
             <article className="group/item min-w-0">
-              <ProjectThumbnail
-                onClick={handleCreateProject}
-                className="bg-background border border-border hover:bg-background/80"
+              <Button
+                aria-label="添加项目"
+                disabled={isPending || isLoading || isEntering}
+                onClick={(event) => handleCreateProject(event.currentTarget)}
+                variant="outline"
+                className="aspect-5/3 h-auto w-full rounded-xl bg-background p-0 hover:bg-background/80"
               >
-                <HugeiconsIcon icon={Add01Icon} size={48} strokeWidth={1} />
-              </ProjectThumbnail>
+                <HugeiconsIcon
+                  className="size-12"
+                  icon={Add01Icon}
+                  strokeWidth={1}
+                />
+              </Button>
               <p className="mt-3 truncate text-sm font-medium text-foreground">
                 添加项目
               </p>
@@ -280,6 +345,13 @@ export function ImageEditorProjectsPage() {
                 )
               }
               disabled={isPending}
+              onOpen={(source) => {
+                rememberPosition()
+                setError(null)
+                void enter(source, async () => project.id).catch(
+                  (error: unknown) => setError(storageError(error)),
+                )
+              }}
               onSelect={(checked) => {
                 setSelectedProjectIds((current) => {
                   const next = new Set(current)

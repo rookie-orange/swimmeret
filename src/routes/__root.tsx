@@ -1,14 +1,17 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { ProjectEntryTransitionProvider } from '@/components/project-entry-transition'
 
 import { ErrorPage } from './(errors)/-components/error-page'
 
 export const Route = createRootRoute({
   component: () => (
-    <div className="relative flex h-screen min-h-0 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1">
-        <Outlet />
+    <ProjectEntryTransitionProvider>
+      <div className="relative flex h-screen min-h-0 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1">
+          <Outlet />
+        </div>
       </div>
-    </div>
+    </ProjectEntryTransitionProvider>
   ),
   notFoundComponent: () => (
     <ErrorPage

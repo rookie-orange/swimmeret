@@ -137,7 +137,47 @@ export function WorkspaceCapsule({ className }: WorkspaceCapsuleProps) {
 
   return (
     <aside className={className}>
-      <div className="pointer-events-auto flex items-center justify-center rounded-full border border-border bg-card/90 p-2 shadow-xl shadow-foreground/10 backdrop-blur-xl">
+      <div className="pointer-events-auto mt-3 flex w-14 shrink-0 flex-col items-center rounded-full border border-border bg-card/90 p-2 shadow-xl shadow-foreground/10 backdrop-blur-xl">
+        <nav aria-label="主导航" className="flex flex-col items-center gap-1">
+          {workspaces.map((item) => (
+            <NavItem
+              active={workspace === item.id}
+              disabled={item.disabled}
+              icon={item.icon}
+              key={item.id}
+              label={item.label}
+              to={item.to}
+            />
+          ))}
+        </nav>
+      </div>
+
+      <div className="pointer-events-auto mt-auto flex w-14 shrink-0 flex-col items-center gap-1 rounded-full border border-border bg-card/90 p-2 shadow-xl shadow-foreground/10 backdrop-blur-xl">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                aria-label="设置"
+                className={cn(
+                  'transition-colors motion-reduce:transition-none',
+                  !location.pathname.startsWith('/settings') &&
+                    'text-muted-foreground',
+                )}
+                onClick={() => void navigate({ to: '/settings' })}
+                size="icon-lg"
+                type="button"
+                variant={
+                  location.pathname.startsWith('/settings')
+                    ? 'secondary'
+                    : 'ghost'
+                }
+              >
+                <HugeiconsIcon icon={Settings01Icon} />
+              </Button>
+            }
+          />
+          <TooltipContent side="right">设置</TooltipContent>
+        </Tooltip>
         <DropdownMenu onOpenChange={setAccountMenuOpen} open={accountMenuOpen}>
           <DropdownMenuTrigger
             render={
@@ -156,7 +196,7 @@ export function WorkspaceCapsule({ className }: WorkspaceCapsuleProps) {
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            align="start"
+            align="end"
             className="w-64 p-2"
             side="right"
             sideOffset={12}
@@ -187,49 +227,6 @@ export function WorkspaceCapsule({ className }: WorkspaceCapsuleProps) {
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-
-      <div className="pointer-events-auto mt-3 flex w-14 flex-col items-center rounded-full border border-border bg-card/90 p-2 shadow-xl shadow-foreground/10 backdrop-blur-xl">
-        <nav aria-label="主导航" className="flex flex-col items-center gap-1">
-          {workspaces.map((item) => (
-            <NavItem
-              active={workspace === item.id}
-              disabled={item.disabled}
-              icon={item.icon}
-              key={item.id}
-              label={item.label}
-              to={item.to}
-            />
-          ))}
-        </nav>
-      </div>
-
-      <div className="pointer-events-auto mt-auto flex size-14 items-center justify-center rounded-full border border-border bg-card/90 p-1.5 shadow-xl shadow-foreground/10 backdrop-blur-xl">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label="设置"
-                className={cn(
-                  'size-11 rounded-2xl transition-colors motion-reduce:transition-none',
-                  !location.pathname.startsWith('/settings') &&
-                    'text-muted-foreground',
-                )}
-                onClick={() => void navigate({ to: '/settings' })}
-                size="icon"
-                type="button"
-                variant={
-                  location.pathname.startsWith('/settings')
-                    ? 'secondary'
-                    : 'ghost'
-                }
-              >
-                <HugeiconsIcon icon={Settings01Icon} />
-              </Button>
-            }
-          />
-          <TooltipContent side="right">设置</TooltipContent>
-        </Tooltip>
       </div>
     </aside>
   )
