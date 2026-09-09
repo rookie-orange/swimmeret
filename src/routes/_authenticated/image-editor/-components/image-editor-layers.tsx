@@ -1,14 +1,19 @@
 import { useMemo } from 'react'
 import {
+  DragDropVerticalIcon,
+  EyeIcon,
+  EyeOffIcon,
   ImageAdd01Icon,
   Layers01Icon,
   PencilEdit01Icon,
   ShapesIcon,
+  SlidersHorizontalIcon,
+  SquareLock01Icon,
+  SquareUnlock01Icon,
   TextIcon,
   UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Eye, EyeOff, GripVertical, Lock, Pencil, Unlock } from 'lucide-react'
 import {
   computed,
   type Editor,
@@ -18,6 +23,7 @@ import {
 } from 'tldraw'
 
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Tooltip,
   TooltipContent,
@@ -26,10 +32,11 @@ import {
 import { cn } from '@/lib/utils'
 
 import { useLayerDecompositionContext } from './layer-decomposition-state'
+import { ImageEditorProperties } from './image-editor-properties'
+import { useImageEditorInspector } from './image-editor-inspector-state'
 
 interface ImageEditorLayersProps {
   editor: Editor | null
-  onAddImages: () => void
 }
 
 interface LayerItem {
@@ -210,7 +217,10 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
             editor.focus()
           }}
         >
-          <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+          <HugeiconsIcon
+            className="shrink-0 text-muted-foreground"
+            icon={DragDropVerticalIcon}
+          />
           <Button
             aria-label={`选择图层 ${layer.name}`}
             className="h-auto min-w-0 flex-1 justify-start gap-3 rounded-lg px-2 py-2 text-left font-normal"
@@ -261,7 +271,7 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
                 />
               }
             >
-              {layer.visible ? <Eye /> : <EyeOff />}
+              <HugeiconsIcon icon={layer.visible ? EyeIcon : EyeOffIcon} />
             </TooltipTrigger>
             <TooltipContent>
               {layer.visible ? '隐藏图层' : '显示图层'}
@@ -281,7 +291,9 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
                 />
               }
             >
-              {layer.locked ? <Lock /> : <Unlock />}
+              <HugeiconsIcon
+                icon={layer.locked ? SquareLock01Icon : SquareUnlock01Icon}
+              />
             </TooltipTrigger>
             <TooltipContent>
               {layer.locked ? '解锁图层' : '锁定图层'}
@@ -309,7 +321,7 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
                 />
               }
             >
-              <Pencil />
+              <HugeiconsIcon icon={PencilEdit01Icon} />
             </TooltipTrigger>
             <TooltipContent>重命名图层</TooltipContent>
           </Tooltip>
@@ -362,63 +374,90 @@ function LayerDecompositionAction({ editor }: { editor: Editor }) {
   )
 }
 
-export function ImageEditorLayers({
-  editor,
-  onAddImages,
-}: ImageEditorLayersProps) {
+export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
+  const { activeTab, setActiveTab } = useImageEditorInspector()
+
   return (
-    <aside className="absolute top-80 right-4 bottom-4 z-20 hidden w-72 min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl shadow-foreground/5 backdrop-blur-xl xl:flex">
-      <div className="flex items-center justify-between px-4 py-3">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <HugeiconsIcon icon={Layers01Icon} />
-            图层
-          </div>
-          {editor ? (
-            <LayerCount editor={editor} />
-          ) : (
-            <p className="mt-1 text-xs text-muted-foreground">画布加载中</p>
-          )}
-        </div>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label="添加图片"
-                className="rounded-full"
-                disabled={!editor}
-                onClick={onAddImages}
-                size="icon-sm"
-                variant="ghost"
+    <aside className="absolute top-4 right-4 bottom-4 z-20 hidden w-72 min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-2xl shadow-foreground/10 backdrop-blur-xl xl:flex">
+      <Tabs
+        className="min-h-0 flex-1 gap-0"
+        onValueChange={(value) =>
+          setActiveTab(value as 'layers' | 'properties')
+        }
+        value={activeTab}
+      >
+        <div className="border-b border-border px-3 py-2">
+          <TabsList className="grid w-full grid-cols-2 rounded-xl">
+            <TabsTrigger value="layers">
+              <HugeiconsIcon data-icon="inline-start" icon={Layers01Icon} />
+              图层
+            </TabsTrigger>
+            <TabsTrigger value="properties">
+              <HugeiconsIcon
+                data-icon="inline-start"
+                icon={SlidersHorizontalIcon}
               />
-            }
-          >
-            <HugeiconsIcon icon={ImageAdd01Icon} />
-          </TooltipTrigger>
-          <TooltipContent>添加图片</TooltipContent>
-        </Tooltip>
-      </div>
-
-      {editor ? (
-        <ConnectedLayers editor={editor} />
-      ) : (
-        <div className="px-4 py-6 text-sm text-muted-foreground">
-          正在准备图层…
+              属性
+            </TabsTrigger>
+          </TabsList>
         </div>
-      )}
 
-      <div className="mt-auto border-t border-border bg-primary/10 p-4">
-        <p className="text-sm font-medium">AI 助手</p>
-        <div className="mt-3">
+        <TabsContent
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          value="layers"
+        >
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <HugeiconsIcon icon={Layers01Icon} />
+                  图层
+                </div>
+                {editor ? (
+                  <LayerCount editor={editor} />
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    画布加载中
+                  </p>
+                )}
+              </div>
+            </div>
+            {editor ? (
+              <ConnectedLayers editor={editor} />
+            ) : (
+              <div className="px-4 py-6 text-sm text-muted-foreground">
+                正在准备图层…
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border bg-primary/10 p-4">
+            <p className="text-sm font-medium">AI 助手</p>
+            <div className="mt-3">
+              {editor ? (
+                <LayerDecompositionAction editor={editor} />
+              ) : (
+                <Button className="w-full rounded-xl" disabled size="sm">
+                  分离当前图层
+                </Button>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent
+          className="min-h-0 flex-1 overflow-y-auto"
+          value="properties"
+        >
           {editor ? (
-            <LayerDecompositionAction editor={editor} />
+            <ImageEditorProperties editor={editor} />
           ) : (
-            <Button className="w-full rounded-xl" disabled size="sm">
-              分离当前图层
-            </Button>
+            <div className="px-4 py-6 text-sm text-muted-foreground">
+              正在准备属性…
+            </div>
           )}
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </aside>
   )
 }

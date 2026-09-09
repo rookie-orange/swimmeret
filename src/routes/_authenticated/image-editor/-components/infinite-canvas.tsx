@@ -1,16 +1,8 @@
 import { memo } from 'react'
 import {
-  DefaultActionsMenu,
-  DefaultContextMenu,
   DefaultDialogs,
-  DefaultMinimap,
-  DefaultNavigationPanel,
-  DefaultPageMenu,
   DefaultRichTextToolbar,
-  DefaultStylePanel,
   DefaultToasts,
-  DefaultToolbar,
-  MobileStylePanel,
   Tldraw,
   type Editor,
   type TLAssetStore,
@@ -25,19 +17,15 @@ import { projectShapeUtils } from '@/lib/project-image-shape'
 
 import { DecompositionLoadingOverlay } from './decomposition-loading-overlay'
 import { ElementToolbar } from './element-toolbar'
+import { ImageEditorContextMenu } from './image-editor-context-menu'
 
 function CanvasFrontLayer() {
   return (
     <>
-      <MobileStylePanel />
       <DecompositionLoadingOverlay />
       <ElementToolbar />
     </>
   )
-}
-
-function CanvasMenuPanel() {
-  return <DefaultPageMenu />
 }
 
 function CanvasBackground() {
@@ -58,20 +46,24 @@ function CanvasBackground() {
 const canvasComponents: TLComponents = {
   Background: CanvasBackground,
   InFrontOfTheCanvas: CanvasFrontLayer,
-  ActionsMenu: DefaultActionsMenu,
-  ContextMenu: DefaultContextMenu,
+  ActionsMenu: null,
+  ContextMenu: ImageEditorContextMenu,
   Dialogs: DefaultDialogs,
-  Minimap: DefaultMinimap,
-  NavigationPanel: DefaultNavigationPanel,
-  PageMenu: DefaultPageMenu,
+  Minimap: null,
+  NavigationPanel: null,
+  PageMenu: null,
   RichTextToolbar: DefaultRichTextToolbar,
-  StylePanel: DefaultStylePanel,
+  StylePanel: null,
   Toasts: DefaultToasts,
-  Toolbar: DefaultToolbar,
-  MenuPanel: CanvasMenuPanel,
+  ImageToolbar: null,
+  VideoToolbar: null,
+  Toolbar: null,
+  MenuPanel: null,
   MainMenu: null,
   HelpMenu: null,
+  ZoomMenu: null,
   QuickActions: null,
+  HelperButtons: null,
   SharePanel: null,
 }
 
@@ -91,7 +83,7 @@ export const InfiniteCanvas = memo(function InfiniteCanvas({
         acceptedImageMimeTypes={['image/png', 'image/jpeg', 'image/webp']}
         components={canvasComponents}
         assets={assets}
-        locale="en"
+        locale="zh-cn"
         maxAssetSize={30 * 1024 * 1024}
         maxImageDimension={4096}
         onMount={onMount}

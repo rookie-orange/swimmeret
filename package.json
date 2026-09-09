@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test:storage": "node --experimental-transform-types --test src/lib/project-storage/autosave.test.ts src/lib/project-preview.test.ts",
+    "test:image-adjustments": "node --experimental-transform-types --test src/lib/project-image-shape.test.ts",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",

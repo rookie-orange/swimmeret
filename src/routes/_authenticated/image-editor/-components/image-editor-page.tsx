@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  ArrowLeft01Icon,
   Download01Icon,
+  Grid3X3Icon,
   Magnet01Icon,
+  PaintBrushIcon,
   Redo02Icon,
+  RefreshCwIcon,
   Undo02Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { type Editor, useValue } from 'tldraw'
-import { Grid3X3, RotateCw } from 'lucide-react'
-import { Paintbrush } from 'lucide-react'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useProjectEntryTransition } from '@/components/project-entry-transition'
@@ -26,7 +26,10 @@ import {
 } from '@/lib/canvas-background'
 
 import { ImageEditorDock } from './image-editor-dock'
+import { ImageEditorInspectorProvider } from './image-editor-inspector-state'
 import { ImageEditorLayers } from './image-editor-layers'
+import { ImageEditorPageMenu } from './image-editor-page-menu'
+import { ImageEditorZoomControls } from './image-editor-zoom-controls'
 import { InfiniteCanvas } from './infinite-canvas'
 import { ExportDialog } from './export-dialog'
 import { LayerDecompositionProvider } from './layer-decomposition-provider'
@@ -155,7 +158,7 @@ function GridControl({ editor }: { editor: Editor | null }) {
           />
         }
       >
-        <Grid3X3 />
+        <HugeiconsIcon icon={Grid3X3Icon} />
       </TooltipTrigger>
       <TooltipContent>{isGridMode ? '隐藏网格' : '显示网格'}</TooltipContent>
     </Tooltip>
@@ -187,7 +190,7 @@ function BackgroundControl({ editor }: { editor: Editor | null }) {
             />
           }
         >
-          <Paintbrush />
+          <HugeiconsIcon icon={PaintBrushIcon} />
         </TooltipTrigger>
         <TooltipContent>画布背景</TooltipContent>
       </Tooltip>
@@ -234,6 +237,9 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
     if (editor || session.loadError) reveal(projectId)
   }, [editor, session.loadError, projectId, reveal])
   const [isExportOpen, setIsExportOpen] = useState(false)
+  const [activeInspectorTab, setActiveInspectorTab] = useState<
+    'layers' | 'properties'
+  >('layers')
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
     useImageImport(editor)
   const layerDecomposition = useLayerDecomposition(editor)
@@ -252,6 +258,13 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
       layerDecomposition.openForShape,
     ],
   )
+  const inspectorContext = useMemo(
+    () => ({
+      activeTab: activeInspectorTab,
+      setActiveTab: setActiveInspectorTab,
+    }),
+    [activeInspectorTab],
+  )
   if (!session.loaded || session.loadError) {
     return (
       <section className="flex h-full flex-col items-center justify-center gap-4 p-6">
@@ -263,7 +276,7 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
         </p>
         {session.loadError ? (
           <Button onClick={session.retry}>
-            <RotateCw data-icon="inline-start" />
+            <HugeiconsIcon data-icon="inline-start" icon={RefreshCwIcon} />
             重新读取
           </Button>
         ) : null}
@@ -279,107 +292,107 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
 
   return (
     <LayerDecompositionProvider value={layerDecompositionContext}>
-      <section className="relative h-full min-h-0 overflow-hidden bg-background">
-        <input
-          accept="image/png,image/jpeg,image/webp"
-          className="sr-only"
-          multiple
-          onChange={handleFileChange}
-          ref={inputRef}
-          type="file"
-        />
-
-        <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
-          <header className="pointer-events-auto flex min-w-0 max-w-40 items-center rounded-full border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl sm:max-w-xs lg:max-w-sm">
-            <Link
-              aria-label={`返回图片编辑项目：${session.loaded.project.name}`}
-              className={cn(
-                buttonVariants({ variant: 'ghost' }),
-                'min-w-0 shrink rounded-full text-muted-foreground',
-              )}
-              to="/image-editor"
-            >
-              <HugeiconsIcon data-icon="inline-start" icon={ArrowLeft01Icon} />
-              <span className="truncate text-sm font-medium text-foreground">
-                {session.loaded.project.name}
-              </span>
-            </Link>
-          </header>
-
-          <div className="min-w-0 flex-1 text-center">
-            {isImporting ? (
-              <p
-                aria-live="polite"
-                className="truncate text-xs text-muted-foreground"
-                role="status"
-              >
-                正在导入图片…
-              </p>
-            ) : null}
-            {error ? (
-              <p className="line-clamp-2 text-xs text-destructive" role="alert">
-                {error}
-              </p>
-            ) : null}
-            {layerDecomposition.error ? (
-              <p className="line-clamp-2 text-xs text-destructive" role="alert">
-                {layerDecomposition.error}
-              </p>
-            ) : null}
-            {layerDecomposition.status ? (
-              <p
-                aria-live="polite"
-                className="truncate text-xs text-muted-foreground"
-                role="status"
-              >
-                {layerDecomposition.status}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
-            <HistoryControls editor={editor} />
-            <SnapControl editor={editor} />
-            <GridControl editor={editor} />
-            <BackgroundControl editor={editor} />
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    aria-label="导出"
-                    className="rounded-full"
-                    disabled={!editor}
-                    onClick={() => setIsExportOpen(true)}
-                  />
-                }
-              >
-                <HugeiconsIcon data-icon="inline-start" icon={Download01Icon} />
-                导出
-              </TooltipTrigger>
-              <TooltipContent>导出</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        <main className="absolute inset-0 min-h-0 min-w-0">
-          <InfiniteCanvas
-            onMount={session.onMount}
-            assets={session.loaded.assets.store}
+      <ImageEditorInspectorProvider value={inspectorContext}>
+        <section className="relative h-full min-h-0 overflow-hidden bg-background">
+          <input
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            multiple
+            onChange={handleFileChange}
+            ref={inputRef}
+            type="file"
           />
-        </main>
 
-        <ImageEditorLayers editor={editor} onAddImages={openFileDialog} />
-        <ImageEditorDock
+          <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
+            <header className="pointer-events-auto flex min-w-0 items-center rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+              <ImageEditorPageMenu editor={editor} />
+            </header>
+
+            <div className="min-w-0 flex-1 text-center">
+              {isImporting ? (
+                <p
+                  aria-live="polite"
+                  className="truncate text-xs text-muted-foreground"
+                  role="status"
+                >
+                  正在导入图片…
+                </p>
+              ) : null}
+              {error ? (
+                <p
+                  className="line-clamp-2 text-xs text-destructive"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              ) : null}
+              {layerDecomposition.error ? (
+                <p
+                  className="line-clamp-2 text-xs text-destructive"
+                  role="alert"
+                >
+                  {layerDecomposition.error}
+                </p>
+              ) : null}
+              {layerDecomposition.status ? (
+                <p
+                  aria-live="polite"
+                  className="truncate text-xs text-muted-foreground"
+                  role="status"
+                >
+                  {layerDecomposition.status}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+              <HistoryControls editor={editor} />
+              <SnapControl editor={editor} />
+              <GridControl editor={editor} />
+              <BackgroundControl editor={editor} />
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      aria-label="导出"
+                      className="rounded-full"
+                      disabled={!editor}
+                      onClick={() => setIsExportOpen(true)}
+                    />
+                  }
+                >
+                  <HugeiconsIcon
+                    data-icon="inline-start"
+                    icon={Download01Icon}
+                  />
+                  导出
+                </TooltipTrigger>
+                <TooltipContent>导出</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+
+          <main className="absolute inset-0 min-h-0 min-w-0">
+            <InfiniteCanvas
+              onMount={session.onMount}
+              assets={session.loaded.assets.store}
+            />
+          </main>
+
+          <ImageEditorLayers editor={editor} />
+          <ImageEditorZoomControls editor={editor} />
+          <ImageEditorDock
+            editor={editor}
+            isImporting={isImporting}
+            onAddImages={openFileDialog}
+          />
+        </section>
+        <ExportDialog
           editor={editor}
-          isImporting={isImporting}
-          onAddImages={openFileDialog}
+          onOpenChange={setIsExportOpen}
+          open={isExportOpen}
         />
-      </section>
-      <ExportDialog
-        editor={editor}
-        onOpenChange={setIsExportOpen}
-        open={isExportOpen}
-      />
+      </ImageEditorInspectorProvider>
     </LayerDecompositionProvider>
   )
 }

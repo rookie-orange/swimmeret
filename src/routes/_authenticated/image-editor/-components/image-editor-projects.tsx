@@ -7,7 +7,12 @@ import {
   useState,
 } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Add01Icon, Delete01Icon, SearchIcon } from '@hugeicons/core-free-icons'
+import {
+  Add01Icon,
+  Delete01Icon,
+  RestoreBinIcon,
+  SearchIcon,
+} from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
 import { Button } from '@/components/ui/button'
@@ -24,7 +29,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { RotateCcw } from 'lucide-react'
 import {
   migrateLegacyProjects,
   workspaceRepository,
@@ -168,7 +172,7 @@ function ProjectItem({
                 />
               }
             >
-              <RotateCcw />
+              <HugeiconsIcon icon={RestoreBinIcon} />
             </TooltipTrigger>
             <TooltipContent>恢复项目</TooltipContent>
           </Tooltip>

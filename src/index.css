@@ -39,6 +39,19 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-canvas-swatch-black: var(--canvas-swatch-black);
+  --color-canvas-swatch-grey: var(--canvas-swatch-grey);
+  --color-canvas-swatch-red: var(--canvas-swatch-red);
+  --color-canvas-swatch-light-red: var(--canvas-swatch-light-red);
+  --color-canvas-swatch-orange: var(--canvas-swatch-orange);
+  --color-canvas-swatch-yellow: var(--canvas-swatch-yellow);
+  --color-canvas-swatch-green: var(--canvas-swatch-green);
+  --color-canvas-swatch-light-green: var(--canvas-swatch-light-green);
+  --color-canvas-swatch-blue: var(--canvas-swatch-blue);
+  --color-canvas-swatch-light-blue: var(--canvas-swatch-light-blue);
+  --color-canvas-swatch-violet: var(--canvas-swatch-violet);
+  --color-canvas-swatch-light-violet: var(--canvas-swatch-light-violet);
+  --color-canvas-swatch-white: var(--canvas-swatch-white);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -100,6 +113,19 @@
     var(--background)
   );
   --canvas-background-ink: oklch(0.25 0.02 260);
+  --canvas-swatch-black: oklch(0.2 0 0);
+  --canvas-swatch-grey: oklch(0.57 0.01 260);
+  --canvas-swatch-red: oklch(0.58 0.22 28);
+  --canvas-swatch-light-red: oklch(0.78 0.14 24);
+  --canvas-swatch-orange: oklch(0.7 0.17 52);
+  --canvas-swatch-yellow: oklch(0.83 0.16 85);
+  --canvas-swatch-green: oklch(0.58 0.16 145);
+  --canvas-swatch-light-green: oklch(0.77 0.14 142);
+  --canvas-swatch-blue: oklch(0.57 0.19 255);
+  --canvas-swatch-light-blue: oklch(0.75 0.13 238);
+  --canvas-swatch-violet: oklch(0.56 0.2 302);
+  --canvas-swatch-light-violet: oklch(0.75 0.14 300);
+  --canvas-swatch-white: oklch(0.99 0 0);
 }
 
 .dark {
@@ -288,9 +314,7 @@
   filter: saturate(1.3);
 }
 .project-image-vignette-1::after,
-.project-image-vignette-2::after,
-.project-image-vignette-3::after,
-.project-image-vignette-4::after {
+.project-image-vignette-2::after {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -307,28 +331,38 @@
 .project-image-vignette-2::after {
   opacity: 0.5;
 }
-.project-image-vignette-3::after {
-  opacity: 0.75;
-}
-.project-image-vignette-4::after {
-  opacity: 1;
-}
-
-.tl-background.project-canvas-background-default {
+.project-canvas-background-default {
   background-color: var(--canvas-background-default);
 }
-.tl-background.project-canvas-background-muted {
+.project-canvas-background-muted {
   background-color: var(--canvas-background-muted);
 }
-.tl-background.project-canvas-background-lavender {
+.project-canvas-background-lavender {
   background-color: var(--canvas-background-lavender);
 }
-.tl-background.project-canvas-background-mint {
+.project-canvas-background-mint {
   background-color: var(--canvas-background-mint);
 }
-.tl-background.project-canvas-background-sand {
+.project-canvas-background-sand {
   background-color: var(--canvas-background-sand);
 }
-.tl-background.project-canvas-background-ink {
+.project-canvas-background-ink {
   background-color: var(--canvas-background-ink);
+}
+
+/* The canvas context menu keeps tldraw's interaction handling and adopts the app shell. */
+.tlui-menu:has(.project-context-menu) {
+  @apply min-w-48 rounded-2xl border border-border bg-popover p-1 font-sans text-popover-foreground shadow-2xl;
+}
+.project-context-menu .tlui-menu__group {
+  @apply border-border/50 py-1;
+}
+.project-context-menu .tlui-button__menu {
+  @apply m-0 h-9 min-h-9 rounded-xl px-3 text-sm;
+}
+.project-context-menu .tlui-button__menu::after {
+  @apply inset-0 rounded-xl bg-accent;
+}
+.project-context-menu .tlui-button__label {
+  @apply text-sm;
 }

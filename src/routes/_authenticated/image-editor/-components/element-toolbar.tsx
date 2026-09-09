@@ -1,37 +1,47 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import {
+  AccessibilityIcon,
   Copy01Icon,
+  CropIcon,
   Delete02Icon,
   Download01Icon,
+  ImageDownloadIcon,
+  ImageFlipHorizontalIcon,
+  ImageFlipVerticalIcon,
   LayerBringToFrontIcon,
   LayerSendToBackIcon,
+  ReplaceIcon,
   SlidersHorizontalIcon,
+  Tick02Icon,
   UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { RotateCcw } from 'lucide-react'
-import { useEditor, useValue } from 'tldraw'
-import type { TLImageShape, TLShapeId } from 'tldraw'
+import { useActions, useEditor, useValue } from 'tldraw'
 
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import {
-  DEFAULT_IMAGE_ADJUSTMENTS,
-  getImageAdjustments,
-  type ImageAdjustments,
-} from '@/lib/project-image-shape'
 
+import { useImageEditorInspector } from './image-editor-inspector-state'
 import { useLayerDecompositionContext } from './layer-decomposition-state'
 import { ExportDialog } from './export-dialog'
 
 // 与下方 Tailwind 固定宽高保持同步，用于精确约束画布内定位。
 const TOOLBAR_WIDTH = 192
-const IMAGE_TOOLBAR_WIDTH = 280
+const IMAGE_TOOLBAR_WIDTH = 288
 const TOOLBAR_HEIGHT = 40
 const TOOLBAR_GAP = 8
 const VIEWPORT_MARGIN = 8
@@ -45,8 +55,8 @@ const actions = [
     imageOnly: true,
   },
   {
-    id: 'adjust',
-    label: '调整',
+    id: 'image-tools',
+    label: '图片工具',
     icon: SlidersHorizontalIcon,
     imageOnly: true,
   },
@@ -66,114 +76,113 @@ const actions = [
   { id: 'delete', label: '删除', icon: Delete02Icon, imageOnly: false },
 ] as const
 
-const adjustmentLabels: Array<{
-  key: keyof ImageAdjustments
-  label: string
-}> = [
-  { key: 'brightness', label: '亮度' },
-  { key: 'exposure', label: '曝光' },
-  { key: 'contrast', label: '对比度' },
-  { key: 'saturation', label: '饱和度' },
-  { key: 'vibrance', label: '鲜艳度' },
-  { key: 'vignette', label: '暗角' },
-]
-
-function ImageAdjustPanel({ shapeId }: { shapeId: TLImageShape['id'] }) {
+function ImageToolsControl({
+  isCropping,
+  onOpenProperties,
+}: {
+  isCropping: boolean
+  onOpenProperties: () => void
+}) {
+  const actions = useActions()
   const editor = useEditor()
-  const adjustments = useValue(
-    'image editor adjustments',
-    () => {
-      const shape = editor.getShape<TLImageShape>(shapeId)
-      return shape ? getImageAdjustments(shape) : DEFAULT_IMAGE_ADJUSTMENTS
-    },
-    [editor, shapeId],
-  )
 
-  const updateAdjustment = (key: keyof ImageAdjustments, value: number) => {
-    const shape = editor.getShape<TLImageShape>(shapeId)
-    if (!shape) return
-    editor.updateShape({
-      id: shape.id,
-      type: shape.type,
-      meta: {
-        ...shape.meta,
-        imageAdjustments: {
-          ...getImageAdjustments(shape),
-          [key]: value,
-        },
-      },
-    })
+  if (isCropping) {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="完成裁剪"
+              onClick={() => {
+                editor.setCroppingShape(null)
+                editor.setCurrentTool('select.idle')
+                editor.focus()
+              }}
+              size="icon-sm"
+              variant="secondary"
+            />
+          }
+        >
+          <HugeiconsIcon icon={Tick02Icon} />
+        </TooltipTrigger>
+        <TooltipContent sideOffset={10}>完成裁剪</TooltipContent>
+      </Tooltip>
+    )
   }
 
   return (
-    <div
-      className="absolute top-12 left-0 z-30 flex w-72 flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-xl shadow-foreground/10"
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">图片调整</p>
-        <Button
-          aria-label="重置图片调整"
-          onClick={() => {
-            const shape = editor.getShape<TLImageShape>(shapeId)
-            if (!shape) return
-            editor.markHistoryStoppingPoint('reset image adjustments')
-            editor.updateShape({
-              id: shape.id,
-              type: shape.type,
-              meta: {
-                ...shape.meta,
-                imageAdjustments: { ...DEFAULT_IMAGE_ADJUSTMENTS },
-              },
-            })
-            editor.focus()
-          }}
-          size="icon-sm"
-          title="重置图片调整"
-          variant="ghost"
-        >
-          <RotateCcw />
-        </Button>
-      </div>
-      <div className="grid gap-2">
-        {adjustmentLabels.map(({ key, label }) => (
-          <label
-            className="grid grid-cols-[4rem_1fr_2rem] items-center gap-2"
-            key={key}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button aria-label="图片工具" size="icon-sm" variant="ghost" />}
+      >
+        <HugeiconsIcon icon={SlidersHorizontalIcon} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" side="top" sideOffset={10}>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>图片工具</DropdownMenuLabel>
+          <DropdownMenuItem onClick={onOpenProperties}>
+            <HugeiconsIcon icon={SlidersHorizontalIcon} />
+            调整图片
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              editor.setCurrentTool('select.crop.idle')
+              editor.focus()
+            }}
           >
-            <span className="text-xs text-muted-foreground">{label}</span>
-            <input
-              aria-label={label}
-              className="h-4 w-full accent-primary"
-              max="2"
-              min={key === 'vignette' ? 0 : -2}
-              onChange={(event) =>
-                updateAdjustment(key, Number(event.target.value))
-              }
-              onPointerDown={() =>
-                editor.markHistoryStoppingPoint(`adjust image ${key}`)
-              }
-              step="1"
-              type="range"
-              value={adjustments[key]}
-            />
-            <output className="text-right text-xs tabular-nums text-muted-foreground">
-              {adjustments[key]}
-            </output>
-          </label>
-        ))}
-      </div>
-    </div>
+            <HugeiconsIcon icon={CropIcon} />
+            裁剪
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              void actions['image-replace'].onSelect('image-toolbar')
+            }}
+          >
+            <HugeiconsIcon icon={ReplaceIcon} />
+            替换图片
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onOpenProperties}>
+            <HugeiconsIcon icon={AccessibilityIcon} />
+            替代文本
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            onClick={() => {
+              void actions['flip-horizontal'].onSelect('image-toolbar')
+            }}
+          >
+            <HugeiconsIcon icon={ImageFlipHorizontalIcon} />
+            水平翻转
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              void actions['flip-vertical'].onSelect('image-toolbar')
+            }}
+          >
+            <HugeiconsIcon icon={ImageFlipVerticalIcon} />
+            垂直翻转
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              void actions['download-original'].onSelect('image-toolbar')
+            }}
+          >
+            <HugeiconsIcon icon={ImageDownloadIcon} />
+            下载原图
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
 export function ElementToolbar() {
   const editor = useEditor()
+  const { setActiveTab } = useImageEditorInspector()
   const { isOpen, isPending, openForShape } = useLayerDecompositionContext()
   const [isExportOpen, setIsExportOpen] = useState(false)
-  const [adjustmentShapeId, setAdjustmentShapeId] = useState<TLShapeId | null>(
-    null,
-  )
   const toolbarRef = useRef<HTMLDivElement>(null)
   const placement = useValue(
     'image editor element toolbar placement',
@@ -235,6 +244,12 @@ export function ElementToolbar() {
     toolbarRef.current.style.transform = `translate3d(${placement.x}px, ${placement.y}px, 0)`
   }, [placement])
 
+  const isCropping = useValue(
+    'image editor is cropping',
+    () => editor.isIn('select.crop.'),
+    [editor],
+  )
+
   if (!placement || isOpen) return null
 
   const runAction = (action: (typeof actions)[number]['id']) => {
@@ -248,11 +263,6 @@ export function ElementToolbar() {
 
     if (action === 'export') {
       setIsExportOpen(true)
-      return
-    }
-
-    if (action === 'adjust') {
-      setAdjustmentShapeId((current) => (current === shapeId ? null : shapeId))
       return
     }
 
@@ -283,37 +293,46 @@ export function ElementToolbar() {
   return (
     <>
       <div
-        aria-label="元素操作"
-        className={cn(
-          'pointer-events-auto absolute top-0 left-0 grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
-          placement.isImage ? 'w-72 grid-cols-7' : 'w-48 grid-cols-5',
-        )}
-        onPointerDown={(event) => event.preventDefault()}
+        className="pointer-events-auto absolute top-0 left-0 flex flex-col items-start gap-2"
         ref={toolbarRef}
-        role="toolbar"
       >
-        {visibleActions.map((action) => (
-          <Tooltip key={action.id}>
-            <TooltipTrigger
-              render={
-                <Button
-                  aria-label={action.label}
-                  disabled={action.id === 'separate-layers' && isPending}
-                  onClick={() => runAction(action.id)}
-                  size="icon-sm"
-                  variant={action.id === 'delete' ? 'destructive' : 'ghost'}
-                />
-              }
-            >
-              <HugeiconsIcon icon={action.icon} />
-            </TooltipTrigger>
-            <TooltipContent sideOffset={10}>{action.label}</TooltipContent>
-          </Tooltip>
-        ))}
+        <div
+          aria-label="元素操作"
+          className={cn(
+            'grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
+            placement.isImage ? 'w-72 grid-cols-7' : 'w-48 grid-cols-5',
+          )}
+          onPointerDown={(event) => event.stopPropagation()}
+          role="toolbar"
+        >
+          {visibleActions.map((action) =>
+            action.id === 'image-tools' ? (
+              <ImageToolsControl
+                isCropping={isCropping}
+                key={action.id}
+                onOpenProperties={() => setActiveTab('properties')}
+              />
+            ) : (
+              <Tooltip key={action.id}>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      aria-label={action.label}
+                      disabled={action.id === 'separate-layers' && isPending}
+                      onClick={() => runAction(action.id)}
+                      size="icon-sm"
+                      variant={action.id === 'delete' ? 'destructive' : 'ghost'}
+                    />
+                  }
+                >
+                  <HugeiconsIcon icon={action.icon} />
+                </TooltipTrigger>
+                <TooltipContent sideOffset={10}>{action.label}</TooltipContent>
+              </Tooltip>
+            ),
+          )}
+        </div>
       </div>
-      {placement.isImage && adjustmentShapeId === placement.shapeId ? (
-        <ImageAdjustPanel shapeId={placement.shapeId} />
-      ) : null}
       <ExportDialog
         editor={editor}
         onOpenChange={setIsExportOpen}
