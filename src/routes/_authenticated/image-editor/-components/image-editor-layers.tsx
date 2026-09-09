@@ -8,6 +8,7 @@ import {
   UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { Eye, EyeOff, GripVertical, Lock, Pencil, Unlock } from 'lucide-react'
 import {
   computed,
   type Editor,
@@ -35,6 +36,9 @@ interface LayerItem {
   id: TLShapeId
   name: string
   type: string
+  depth: number
+  visible: boolean
+  locked: boolean
 }
 
 function isDecompositionGroup(shape: TLShape) {
@@ -67,6 +71,18 @@ function getLayerIcon(shapeType: string) {
   }
 }
 
+function getLayerDepth(editor: Editor, shape: TLShape) {
+  let depth = 0
+  let parentId = shape.parentId
+  while (parentId !== editor.getCurrentPageId() && depth < 20) {
+    const parent = editor.getShape(parentId)
+    if (!parent) break
+    depth += 1
+    parentId = parent.parentId
+  }
+  return depth
+}
+
 function areLayersEqual(previous: LayerItem[], next: LayerItem[]) {
   return (
     previous.length === next.length &&
@@ -74,7 +90,9 @@ function areLayersEqual(previous: LayerItem[], next: LayerItem[]) {
       (layer, index) =>
         layer.id === next[index]?.id &&
         layer.name === next[index]?.name &&
-        layer.type === next[index]?.type,
+        layer.type === next[index]?.type &&
+        layer.visible === next[index]?.visible &&
+        layer.locked === next[index]?.locked,
     )
   )
 }
@@ -92,17 +110,31 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
             const shape = shapes[index]
             if (isDecompositionGroup(shape)) continue
             const type = getLayerType(shape.type)
-            let name = type
+            let name =
+              typeof shape.meta.name === 'string' && shape.meta.name.trim()
+                ? shape.meta.name.trim()
+                : type
 
-            if (shape.type === 'image' && shape.props.assetId) {
+            if (
+              name === type &&
+              shape.type === 'image' &&
+              shape.props.assetId
+            ) {
               const asset = editor.getAsset(shape.props.assetId)
               name = asset?.type === 'image' ? asset.props.name || type : type
-            } else {
+            } else if (name === type) {
               const text = editor.getShapeUtil(shape).getText(shape)?.trim()
               if (text) name = text
             }
 
-            layers.push({ id: shape.id, name, type: shape.type })
+            layers.push({
+              id: shape.id,
+              name,
+              type: shape.type,
+              depth: getLayerDepth(editor, shape),
+              visible: !editor.isShapeHidden(shape),
+              locked: editor.isShapeOrAncestorLocked(shape),
+            })
           }
 
           return layers
@@ -138,32 +170,150 @@ function ConnectedLayers({ editor }: { editor: Editor }) {
   return (
     <div className="flex min-h-0 flex-col gap-1 overflow-y-auto px-2 pb-3">
       {layers.map((layer) => (
-        <Button
-          aria-label={`选择图层 ${layer.name}`}
+        <div
           className={cn(
-            'h-auto w-full justify-start gap-3 rounded-xl px-3 py-2 text-left font-normal',
-            selectedShapeId === layer.id && 'bg-secondary text-foreground',
+            'group flex items-center gap-1 rounded-xl border border-transparent px-1',
+            selectedShapeId === layer.id && 'border-border bg-secondary',
+            !layer.visible && 'opacity-60',
+            layer.depth === 1 && 'ml-3',
+            layer.depth >= 2 && 'ml-6',
           )}
+          draggable
           key={layer.id}
-          onClick={() => {
-            editor.setCurrentTool('select')
-            editor.select(layer.id)
-            editor.zoomToSelection({ animation: { duration: 180 } })
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData('text/plain', layer.id)
+          }}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault()
+            const draggedId = event.dataTransfer.getData(
+              'text/plain',
+            ) as TLShapeId
+            const targetIndex = layers.findIndex((item) => item.id === layer.id)
+            const draggedIndex = layers.findIndex(
+              (item) => item.id === draggedId,
+            )
+            if (
+              draggedIndex < 0 ||
+              targetIndex < 0 ||
+              draggedIndex === targetIndex
+            )
+              return
+            const steps = Math.abs(targetIndex - draggedIndex)
+            const ids = [draggedId]
+            editor.markHistoryStoppingPoint('reorder layers')
+            for (let step = 0; step < steps; step += 1) {
+              if (draggedIndex < targetIndex) editor.sendBackward(ids)
+              else editor.bringForward(ids)
+            }
             editor.focus()
           }}
-          variant="ghost"
         >
-          <HugeiconsIcon
-            className="text-muted-foreground"
-            icon={getLayerIcon(layer.type)}
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm">{layer.name}</span>
-            <span className="text-xs text-muted-foreground">
-              {getLayerType(layer.type)}
+          <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+          <Button
+            aria-label={`选择图层 ${layer.name}`}
+            className="h-auto min-w-0 flex-1 justify-start gap-3 rounded-lg px-2 py-2 text-left font-normal"
+            onClick={(event) => {
+              editor.setCurrentTool('select')
+              if (event.shiftKey)
+                editor.setSelectedShapes([
+                  ...editor.getSelectedShapeIds(),
+                  layer.id,
+                ])
+              else editor.select(layer.id)
+              editor.zoomToSelection({ animation: { duration: 180 } })
+              editor.focus()
+            }}
+            variant="ghost"
+          >
+            <HugeiconsIcon
+              className="text-muted-foreground"
+              icon={getLayerIcon(layer.type)}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm">{layer.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {getLayerType(layer.type)}
+              </span>
             </span>
-          </span>
-        </Button>
+          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label={layer.visible ? '隐藏图层' : '显示图层'}
+                  onClick={() => {
+                    const shape = editor.getShape(layer.id)
+                    if (!shape) return
+                    editor.updateShape({
+                      id: layer.id,
+                      type: shape.type,
+                      meta: {
+                        ...shape.meta,
+                        visibility: layer.visible ? 'hidden' : 'inherit',
+                      },
+                    })
+                    editor.focus()
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                />
+              }
+            >
+              {layer.visible ? <Eye /> : <EyeOff />}
+            </TooltipTrigger>
+            <TooltipContent>
+              {layer.visible ? '隐藏图层' : '显示图层'}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label={layer.locked ? '解锁图层' : '锁定图层'}
+                  onClick={() => {
+                    editor.toggleLock([layer.id])
+                    editor.focus()
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                />
+              }
+            >
+              {layer.locked ? <Lock /> : <Unlock />}
+            </TooltipTrigger>
+            <TooltipContent>
+              {layer.locked ? '解锁图层' : '锁定图层'}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  aria-label="重命名图层"
+                  onClick={() => {
+                    const shape = editor.getShape(layer.id)
+                    if (!shape) return
+                    const name = window.prompt('重命名图层', layer.name)?.trim()
+                    if (!name || name === layer.name) return
+                    editor.updateShape({
+                      id: shape.id,
+                      type: shape.type,
+                      meta: { ...shape.meta, name },
+                    })
+                    editor.focus()
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                />
+              }
+            >
+              <Pencil />
+            </TooltipTrigger>
+            <TooltipContent>重命名图层</TooltipContent>
+          </Tooltip>
+        </div>
       ))}
     </div>
   )
@@ -217,7 +367,7 @@ export function ImageEditorLayers({
   onAddImages,
 }: ImageEditorLayersProps) {
   return (
-    <aside className="absolute top-4 right-4 bottom-4 z-20 hidden w-72 min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl shadow-foreground/5 backdrop-blur-xl xl:flex">
+    <aside className="absolute top-80 right-4 bottom-4 z-20 hidden w-72 min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl shadow-foreground/5 backdrop-blur-xl xl:flex">
       <div className="flex items-center justify-between px-4 py-3">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">

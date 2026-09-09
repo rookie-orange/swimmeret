@@ -5,10 +5,13 @@ import {
   Download01Icon,
   LayerBringToFrontIcon,
   LayerSendToBackIcon,
+  SlidersHorizontalIcon,
   UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { RotateCcw } from 'lucide-react'
 import { useEditor, useValue } from 'tldraw'
+import type { TLImageShape, TLShapeId } from 'tldraw'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -17,13 +20,18 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import {
+  DEFAULT_IMAGE_ADJUSTMENTS,
+  getImageAdjustments,
+  type ImageAdjustments,
+} from '@/lib/project-image-shape'
 
 import { useLayerDecompositionContext } from './layer-decomposition-state'
 import { ExportDialog } from './export-dialog'
 
 // 与下方 Tailwind 固定宽高保持同步，用于精确约束画布内定位。
 const TOOLBAR_WIDTH = 192
-const IMAGE_TOOLBAR_WIDTH = 240
+const IMAGE_TOOLBAR_WIDTH = 280
 const TOOLBAR_HEIGHT = 40
 const TOOLBAR_GAP = 8
 const VIEWPORT_MARGIN = 8
@@ -34,6 +42,12 @@ const actions = [
     id: 'separate-layers',
     label: '分离图层',
     icon: UngroupLayersIcon,
+    imageOnly: true,
+  },
+  {
+    id: 'adjust',
+    label: '调整',
+    icon: SlidersHorizontalIcon,
     imageOnly: true,
   },
   {
@@ -52,10 +66,114 @@ const actions = [
   { id: 'delete', label: '删除', icon: Delete02Icon, imageOnly: false },
 ] as const
 
+const adjustmentLabels: Array<{
+  key: keyof ImageAdjustments
+  label: string
+}> = [
+  { key: 'brightness', label: '亮度' },
+  { key: 'exposure', label: '曝光' },
+  { key: 'contrast', label: '对比度' },
+  { key: 'saturation', label: '饱和度' },
+  { key: 'vibrance', label: '鲜艳度' },
+  { key: 'vignette', label: '暗角' },
+]
+
+function ImageAdjustPanel({ shapeId }: { shapeId: TLImageShape['id'] }) {
+  const editor = useEditor()
+  const adjustments = useValue(
+    'image editor adjustments',
+    () => {
+      const shape = editor.getShape<TLImageShape>(shapeId)
+      return shape ? getImageAdjustments(shape) : DEFAULT_IMAGE_ADJUSTMENTS
+    },
+    [editor, shapeId],
+  )
+
+  const updateAdjustment = (key: keyof ImageAdjustments, value: number) => {
+    const shape = editor.getShape<TLImageShape>(shapeId)
+    if (!shape) return
+    editor.updateShape({
+      id: shape.id,
+      type: shape.type,
+      meta: {
+        ...shape.meta,
+        imageAdjustments: {
+          ...getImageAdjustments(shape),
+          [key]: value,
+        },
+      },
+    })
+  }
+
+  return (
+    <div
+      className="absolute top-12 left-0 z-30 flex w-72 flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-xl shadow-foreground/10"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">图片调整</p>
+        <Button
+          aria-label="重置图片调整"
+          onClick={() => {
+            const shape = editor.getShape<TLImageShape>(shapeId)
+            if (!shape) return
+            editor.markHistoryStoppingPoint('reset image adjustments')
+            editor.updateShape({
+              id: shape.id,
+              type: shape.type,
+              meta: {
+                ...shape.meta,
+                imageAdjustments: { ...DEFAULT_IMAGE_ADJUSTMENTS },
+              },
+            })
+            editor.focus()
+          }}
+          size="icon-sm"
+          title="重置图片调整"
+          variant="ghost"
+        >
+          <RotateCcw />
+        </Button>
+      </div>
+      <div className="grid gap-2">
+        {adjustmentLabels.map(({ key, label }) => (
+          <label
+            className="grid grid-cols-[4rem_1fr_2rem] items-center gap-2"
+            key={key}
+          >
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <input
+              aria-label={label}
+              className="h-4 w-full accent-primary"
+              max="2"
+              min={key === 'vignette' ? 0 : -2}
+              onChange={(event) =>
+                updateAdjustment(key, Number(event.target.value))
+              }
+              onPointerDown={() =>
+                editor.markHistoryStoppingPoint(`adjust image ${key}`)
+              }
+              step="1"
+              type="range"
+              value={adjustments[key]}
+            />
+            <output className="text-right text-xs tabular-nums text-muted-foreground">
+              {adjustments[key]}
+            </output>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function ElementToolbar() {
   const editor = useEditor()
   const { isOpen, isPending, openForShape } = useLayerDecompositionContext()
   const [isExportOpen, setIsExportOpen] = useState(false)
+  const [adjustmentShapeId, setAdjustmentShapeId] = useState<TLShapeId | null>(
+    null,
+  )
   const toolbarRef = useRef<HTMLDivElement>(null)
   const placement = useValue(
     'image editor element toolbar placement',
@@ -133,6 +251,11 @@ export function ElementToolbar() {
       return
     }
 
+    if (action === 'adjust') {
+      setAdjustmentShapeId((current) => (current === shapeId ? null : shapeId))
+      return
+    }
+
     editor.markHistoryStoppingPoint(`element toolbar ${action}`)
 
     switch (action) {
@@ -163,7 +286,7 @@ export function ElementToolbar() {
         aria-label="元素操作"
         className={cn(
           'pointer-events-auto absolute top-0 left-0 grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
-          placement.isImage ? 'w-60 grid-cols-6' : 'w-48 grid-cols-5',
+          placement.isImage ? 'w-72 grid-cols-7' : 'w-48 grid-cols-5',
         )}
         onPointerDown={(event) => event.preventDefault()}
         ref={toolbarRef}
@@ -188,6 +311,9 @@ export function ElementToolbar() {
           </Tooltip>
         ))}
       </div>
+      {placement.isImage && adjustmentShapeId === placement.shapeId ? (
+        <ImageAdjustPanel shapeId={placement.shapeId} />
+      ) : null}
       <ExportDialog
         editor={editor}
         onOpenChange={setIsExportOpen}

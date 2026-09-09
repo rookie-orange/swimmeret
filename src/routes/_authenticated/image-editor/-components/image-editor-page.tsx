@@ -6,11 +6,11 @@ import {
   Magnet01Icon,
   Redo02Icon,
   Undo02Icon,
-  ViewIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { type Editor, useValue } from 'tldraw'
-import { RotateCw } from 'lucide-react'
+import { Grid3X3, RotateCw } from 'lucide-react'
+import { Paintbrush } from 'lucide-react'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useProjectEntryTransition } from '@/components/project-entry-transition'
@@ -20,6 +20,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import {
+  CANVAS_BACKGROUNDS,
+  getCanvasBackgroundId,
+} from '@/lib/canvas-background'
 
 import { ImageEditorDock } from './image-editor-dock'
 import { ImageEditorLayers } from './image-editor-layers'
@@ -121,6 +125,103 @@ function SnapControl({ editor }: { editor: Editor | null }) {
         {isSnapMode ? '吸附已开启' : '吸附已关闭'}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+function GridControl({ editor }: { editor: Editor | null }) {
+  const isGridMode = useValue(
+    'image editor grid mode',
+    () => editor?.getInstanceState().isGridMode ?? false,
+    [editor],
+  )
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={isGridMode ? '隐藏网格' : '显示网格'}
+            aria-pressed={isGridMode}
+            className="rounded-full"
+            disabled={!editor}
+            onClick={() => {
+              if (!editor) return
+              const next = !isGridMode
+              editor.updateInstanceState({ isGridMode: next })
+              editor.focus()
+            }}
+            size="icon"
+            variant={isGridMode ? 'secondary' : 'ghost'}
+          />
+        }
+      >
+        <Grid3X3 />
+      </TooltipTrigger>
+      <TooltipContent>{isGridMode ? '隐藏网格' : '显示网格'}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+function BackgroundControl({ editor }: { editor: Editor | null }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const background = useValue(
+    'image editor selected canvas background',
+    () =>
+      getCanvasBackgroundId(editor?.getCurrentPage()?.meta.canvasBackground),
+    [editor],
+  )
+
+  return (
+    <div className="relative">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-expanded={isOpen}
+              aria-label="画布背景"
+              className="rounded-full"
+              disabled={!editor}
+              onClick={() => setIsOpen((open) => !open)}
+              size="icon"
+              variant={isOpen ? 'secondary' : 'ghost'}
+            />
+          }
+        >
+          <Paintbrush />
+        </TooltipTrigger>
+        <TooltipContent>画布背景</TooltipContent>
+      </Tooltip>
+      {isOpen && editor ? (
+        <div className="absolute top-11 right-0 z-40 grid w-40 grid-cols-3 gap-2 rounded-xl border border-border bg-card p-2 shadow-xl shadow-foreground/10">
+          {CANVAS_BACKGROUNDS.map((option) => (
+            <Button
+              aria-label={`画布背景：${option.label}`}
+              aria-pressed={background === option.id}
+              className={cn(
+                'h-8 rounded-lg border border-border text-xs',
+                background === option.id && 'ring-2 ring-ring',
+              )}
+              key={option.id}
+              onClick={() => {
+                const page = editor.getCurrentPage()
+                if (!page) return
+                editor.markHistoryStoppingPoint('change canvas background')
+                editor.updatePage({
+                  id: page.id,
+                  meta: { ...page.meta, canvasBackground: option.id },
+                })
+                setIsOpen(false)
+                editor.focus()
+              }}
+              size="sm"
+              variant="ghost"
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -239,14 +340,8 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
           <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
             <HistoryControls editor={editor} />
             <SnapControl editor={editor} />
-            <Button
-              className="hidden rounded-full xl:inline-flex"
-              disabled
-              variant="ghost"
-            >
-              <HugeiconsIcon data-icon="inline-start" icon={ViewIcon} />
-              预览
-            </Button>
+            <GridControl editor={editor} />
+            <BackgroundControl editor={editor} />
             <Tooltip>
               <TooltipTrigger
                 render={
