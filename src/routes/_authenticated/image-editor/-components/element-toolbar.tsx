@@ -3,7 +3,6 @@ import {
   AccessibilityIcon,
   Copy01Icon,
   CropIcon,
-  Delete02Icon,
   Download01Icon,
   ImageDownloadIcon,
   ImageFlipHorizontalIcon,
@@ -38,6 +37,7 @@ import { cn } from '@/lib/utils'
 import { useImageEditorInspector } from './image-editor-inspector-state'
 import { useLayerDecompositionContext } from './layer-decomposition-state'
 import { ExportDialog } from './export-dialog'
+import { ElementMoreMenu } from './element-more-menu'
 
 // 与下方 Tailwind 固定宽高保持同步，用于精确约束画布内定位。
 const TOOLBAR_WIDTH = 192
@@ -47,7 +47,7 @@ const TOOLBAR_GAP = 8
 const VIEWPORT_MARGIN = 8
 
 const actions = [
-  { id: 'copy', label: '复制', icon: Copy01Icon, imageOnly: false },
+  { id: 'duplicate', label: '创建副本', icon: Copy01Icon, imageOnly: false },
   {
     id: 'separate-layers',
     label: '分离图层',
@@ -72,14 +72,15 @@ const actions = [
     icon: LayerSendToBackIcon,
     imageOnly: false,
   },
-  { id: 'export', label: '导出', icon: Download01Icon, imageOnly: false },
-  { id: 'delete', label: '删除', icon: Delete02Icon, imageOnly: false },
+  { id: 'export', label: '下载', icon: Download01Icon, imageOnly: false },
 ] as const
 
 function ImageToolsControl({
+  disabled,
   isCropping,
   onOpenProperties,
 }: {
+  disabled: boolean
   isCropping: boolean
   onOpenProperties: () => void
 }) {
@@ -113,6 +114,7 @@ function ImageToolsControl({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        disabled={disabled}
         render={<Button aria-label="图片工具" size="icon-sm" variant="ghost" />}
       >
         <HugeiconsIcon icon={SlidersHorizontalIcon} />
@@ -189,7 +191,7 @@ export function ElementToolbar() {
     () => {
       const selectedIds = editor.getSelectedShapeIds()
       if (
-        selectedIds.length !== 1 ||
+        selectedIds.length === 0 ||
         editor.getEditingShapeId() ||
         editor.getCurrentToolId() !== 'select'
       ) {
@@ -199,7 +201,12 @@ export function ElementToolbar() {
       const shape = editor.getShape(selectedIds[0])
       if (!shape) return null
 
-      const isImage = shape.type === 'image'
+      const isImage = selectedIds.length === 1 && shape.type === 'image'
+      const canEdit =
+        !editor.getInstanceState().isReadonly &&
+        editor
+          .getSelectedShapes()
+          .some((selected) => !editor.isShapeOrAncestorLocked(selected))
       const toolbarWidth = isImage ? IMAGE_TOOLBAR_WIDTH : TOOLBAR_WIDTH
       const bounds = editor.getSelectionRotatedScreenBounds()
       if (!bounds) return null
@@ -222,8 +229,9 @@ export function ElementToolbar() {
       )
 
       return {
-        shapeId: selectedIds[0],
+        shapeIds: selectedIds,
         isImage,
+        canEdit,
         x: Math.min(
           Math.max(
             bounds.center.x - viewport.minX - toolbarWidth / 2,
@@ -253,11 +261,11 @@ export function ElementToolbar() {
   if (!placement || isOpen) return null
 
   const runAction = (action: (typeof actions)[number]['id']) => {
-    const shapeId = placement.shapeId
-    if (!editor.getShape(shapeId)) return
+    const shapeIds = placement.shapeIds.filter((id) => editor.getShape(id))
+    if (shapeIds.length === 0) return
 
     if (action === 'separate-layers') {
-      openForShape(shapeId)
+      if (placement.isImage && placement.canEdit) openForShape(shapeIds[0])
       return
     }
 
@@ -266,20 +274,19 @@ export function ElementToolbar() {
       return
     }
 
+    if (!placement.canEdit || isCropping) return
+
     editor.markHistoryStoppingPoint(`element toolbar ${action}`)
 
     switch (action) {
-      case 'copy':
-        editor.duplicateShapes([shapeId], { x: 24, y: 24 })
+      case 'duplicate':
+        editor.duplicateShapes(shapeIds, { x: 24, y: 24 })
         break
       case 'front':
-        editor.bringToFront([shapeId])
+        editor.bringToFront(shapeIds)
         break
       case 'back':
-        editor.sendToBack([shapeId])
-        break
-      case 'delete':
-        editor.deleteShapes([shapeId])
+        editor.sendToBack(shapeIds)
         break
     }
 
@@ -297,7 +304,9 @@ export function ElementToolbar() {
         ref={toolbarRef}
       >
         <div
-          aria-label="元素操作"
+          aria-label={
+            placement.shapeIds.length > 1 ? '多选元素操作' : '元素操作'
+          }
           className={cn(
             'grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
             placement.isImage ? 'w-72 grid-cols-7' : 'w-48 grid-cols-5',
@@ -308,6 +317,7 @@ export function ElementToolbar() {
           {visibleActions.map((action) =>
             action.id === 'image-tools' ? (
               <ImageToolsControl
+                disabled={!placement.canEdit}
                 isCropping={isCropping}
                 key={action.id}
                 onOpenProperties={() => setActiveTab('properties')}
@@ -318,10 +328,15 @@ export function ElementToolbar() {
                   render={
                     <Button
                       aria-label={action.label}
-                      disabled={action.id === 'separate-layers' && isPending}
+                      disabled={
+                        action.id !== 'export' &&
+                        (!placement.canEdit ||
+                          isCropping ||
+                          (action.id === 'separate-layers' && isPending))
+                      }
                       onClick={() => runAction(action.id)}
                       size="icon-sm"
-                      variant={action.id === 'delete' ? 'destructive' : 'ghost'}
+                      variant="ghost"
                     />
                   }
                 >
@@ -331,13 +346,20 @@ export function ElementToolbar() {
               </Tooltip>
             ),
           )}
+          <ElementMoreMenu
+            disabled={isCropping}
+            key={placement.shapeIds.join(',')}
+            onDuplicate={() => runAction('duplicate')}
+            onExport={() => setIsExportOpen(true)}
+            onOpenProperties={() => setActiveTab('properties')}
+          />
         </div>
       </div>
       <ExportDialog
         editor={editor}
         onOpenChange={setIsExportOpen}
         open={isExportOpen}
-        shapeIds={placement ? [placement.shapeId] : undefined}
+        shapeIds={placement.shapeIds}
       />
     </>
   )
