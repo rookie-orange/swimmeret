@@ -17,8 +17,8 @@ import {
   HighlighterIcon,
   ImageAdd01Icon,
   LineIcon,
-  LockIcon,
-  LockOpenIcon,
+  LockKeyholeIcon,
+  LockKeyholeOpenIcon,
   MoreHorizontalIcon,
   NoteIcon,
   OctagonIcon,
@@ -163,7 +163,7 @@ function ShapeToolPicker({
             <Button
               aria-label={`形状：${getToolLabel(activeGeo)}`}
               aria-pressed={isActive}
-              className="rounded-r-lg"
+              className="rounded-r-sm"
               disabled={disabled}
               onClick={() => onActivate(activeGeo.id)}
               size="icon-lg"
@@ -180,7 +180,7 @@ function ShapeToolPicker({
           render={
             <Button
               aria-label="选择形状"
-              className="w-5 rounded-l-lg px-0"
+              className="w-5 rounded-l-sm px-0"
               disabled={disabled}
               size="icon-lg"
               variant={isActive ? 'default' : 'ghost'}
@@ -362,7 +362,10 @@ export function ImageEditorDock({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Separator className="mx-1 h-6 !self-center" orientation="vertical" />
+          <Separator
+            className="mx-1 h-6 self-center! w-0.5! rounded-full"
+            orientation="vertical"
+          />
           <Tooltip>
             <TooltipTrigger
               render={
@@ -379,14 +382,16 @@ export function ImageEditorDock({
                     focusEditor()
                   }}
                   size="icon-lg"
-                  variant={
-                    isToolLockable && isToolLocked ? 'secondary' : 'ghost'
-                  }
+                  variant={isToolLockable && isToolLocked ? 'default' : 'ghost'}
                 />
               }
             >
               <HugeiconsIcon
-                icon={isToolLockable && isToolLocked ? LockIcon : LockOpenIcon}
+                icon={
+                  isToolLockable && isToolLocked
+                    ? LockKeyholeIcon
+                    : LockKeyholeOpenIcon
+                }
               />
             </TooltipTrigger>
             <TooltipContent>
