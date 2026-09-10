@@ -38,6 +38,8 @@ import { useImageEditorInspector } from './image-editor-inspector-state'
 import { useLayerDecompositionContext } from './layer-decomposition-state'
 import { ExportDialog } from './export-dialog'
 import { ElementMoreMenu } from './element-more-menu'
+import { SelectionColorPicker } from './selection-color-picker'
+import { SelectionSizeMenu } from './selection-size-menu'
 
 // 与下方 Tailwind 固定宽高保持同步，用于精确约束画布内定位。
 const TOOLBAR_WIDTH = 192
@@ -202,12 +204,24 @@ export function ElementToolbar() {
       if (!shape) return null
 
       const isImage = selectedIds.length === 1 && shape.type === 'image'
+      const isGeo = editor
+        .getSelectedShapes()
+        .every((selected) => selected.type === 'geo')
+      const isStroke = editor
+        .getSelectedShapes()
+        .every((selected) =>
+          ['draw', 'line', 'arrow', 'highlight'].includes(selected.type),
+        )
+      const isText = editor
+        .getSelectedShapes()
+        .every((selected) => selected.type === 'text')
+      const isWide = isImage || isGeo || isStroke || isText
       const canEdit =
         !editor.getInstanceState().isReadonly &&
         editor
           .getSelectedShapes()
           .some((selected) => !editor.isShapeOrAncestorLocked(selected))
-      const toolbarWidth = isImage ? IMAGE_TOOLBAR_WIDTH : TOOLBAR_WIDTH
+      const toolbarWidth = isWide ? IMAGE_TOOLBAR_WIDTH : TOOLBAR_WIDTH
       const bounds = editor.getSelectionRotatedScreenBounds()
       if (!bounds) return null
 
@@ -231,6 +245,10 @@ export function ElementToolbar() {
       return {
         shapeIds: selectedIds,
         isImage,
+        isGeo,
+        isStroke,
+        isText,
+        isWide,
         canEdit,
         x: Math.min(
           Math.max(
@@ -309,11 +327,31 @@ export function ElementToolbar() {
           }
           className={cn(
             'grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
-            placement.isImage ? 'w-72 grid-cols-7' : 'w-48 grid-cols-5',
+            placement.isWide ? 'w-72 grid-cols-7' : 'w-48 grid-cols-5',
           )}
           onPointerDown={(event) => event.stopPropagation()}
           role="toolbar"
         >
+          {placement.isGeo ? (
+            <>
+              <SelectionColorPicker editor={editor} channel="fill" compact />
+              <SelectionColorPicker editor={editor} channel="stroke" compact />
+            </>
+          ) : null}
+          {placement.isStroke || placement.isText ? (
+            <>
+              <SelectionSizeMenu
+                editor={editor}
+                text={placement.isText}
+                disabled={!placement.canEdit || isCropping}
+              />
+              <SelectionColorPicker
+                editor={editor}
+                channel={placement.isText ? 'color' : 'stroke'}
+                compact
+              />
+            </>
+          ) : null}
           {visibleActions.map((action) =>
             action.id === 'image-tools' ? (
               <ImageToolsControl

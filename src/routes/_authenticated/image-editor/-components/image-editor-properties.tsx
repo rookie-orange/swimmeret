@@ -38,6 +38,10 @@ import { InspectorActions } from './inspector-actions'
 import { InspectorNumber, InspectorSection } from './inspector-controls'
 import { InspectorImage, InspectorImageDescription } from './inspector-image'
 import { InspectorTransform } from './inspector-transform'
+import { SelectionColorPicker } from './selection-color-picker'
+import { SelectionStrokeWidth } from './selection-stroke-width'
+import { SelectionFontSize } from './selection-font-size'
+import { supportsShapeColor } from '@/lib/project-shape-colors'
 
 interface ImageEditorPropertiesProps {
   editor: Editor
@@ -92,13 +96,6 @@ const dashOptions = [
   { value: 'solid', label: '实线' },
   { value: 'dashed', label: '虚线' },
   { value: 'dotted', label: '点线' },
-] as const
-
-const sizeOptions = [
-  { value: 's', label: '细' },
-  { value: 'm', label: '中' },
-  { value: 'l', label: '粗' },
-  { value: 'xl', label: '特粗' },
 ] as const
 
 const fontOptions = [
@@ -249,11 +246,31 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
 
       return {
         count: shapes.length,
+        hasFillColor: shapes.some((shape) => supportsShapeColor(shape, 'fill')),
+        hasStrokeColor: shapes.some((shape) =>
+          supportsShapeColor(shape, 'stroke'),
+        ),
+        hasTextColor: shapes.some((shape) =>
+          supportsShapeColor(shape, 'color'),
+        ),
+        hasLegacyColor: shapes.some(
+          (shape) =>
+            ![
+              'geo',
+              'draw',
+              'arrow',
+              'line',
+              'highlight',
+              'text',
+              'image',
+            ].includes(shape.type),
+        ),
         hasText: shapes.some(
           (shape) =>
             shape.type === 'text' ||
             Boolean(editor.getShapeUtil(shape).getText(shape)?.trim()),
         ),
+        onlyText: shapes.every((shape) => shape.type === 'text'),
         ids: shapes.map((shape) => shape.id).join(','),
         disabled:
           editor.getIsReadonly() ||
@@ -310,6 +327,7 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
     text: '文字',
     geo: '图形',
     draw: '画笔',
+    highlight: '荧光笔',
     line: '线条',
     arrow: '箭头',
     group: '组合',
@@ -360,10 +378,7 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
             disabled={selection.disabled}
           />
         ) : null}
-        <fieldset
-          disabled={disabled}
-          className="min-w-0 border-0 p-0 disabled:opacity-50"
-        >
+        <fieldset className="min-w-0 border-0 p-0 disabled:opacity-50">
           {selection.geo !== null ? (
             <InspectorSection>
               {selectStyle(
@@ -383,12 +398,19 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
                   selection.font,
                   fontOptions,
                 )}
-                {selectStyle('字号', DefaultSizeStyle, selection.size, [
-                  { value: 's', label: '小' },
-                  { value: 'm', label: '中' },
-                  { value: 'l', label: '大' },
-                  { value: 'xl', label: '特大' },
-                ])}
+                {selection.onlyText ? (
+                  <Field>
+                    <FieldLabel>字号</FieldLabel>
+                    <SelectionFontSize editor={editor} />
+                  </Field>
+                ) : (
+                  selectStyle('字号', DefaultSizeStyle, selection.size, [
+                    { value: 's', label: '小' },
+                    { value: 'm', label: '中' },
+                    { value: 'l', label: '大' },
+                    { value: 'xl', label: '特大' },
+                  ])
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {selectStyle(
@@ -412,7 +434,12 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
               </div>
             </InspectorSection>
           ) : null}
-          {selection.color !== null ? (
+          {selection.hasTextColor ? (
+            <InspectorSection title="文字颜色">
+              <SelectionColorPicker editor={editor} channel="color" />
+            </InspectorSection>
+          ) : null}
+          {selection.color !== null && selection.hasLegacyColor ? (
             <InspectorSection
               title={selection.shapeType === 'text' ? '文字颜色' : '颜色'}
             >
@@ -420,6 +447,7 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
                 {colorOptions.map((option) => (
                   <Button
                     key={option.value}
+                    disabled={disabled}
                     aria-label={option.label}
                     aria-pressed={selection.color === option.value}
                     title={option.label}
@@ -455,6 +483,9 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
           ) : null}
           {selection.fill !== null ? (
             <InspectorSection title="填充">
+              {selection.hasFillColor ? (
+                <SelectionColorPicker editor={editor} channel="fill" />
+              ) : null}
               {selectStyle(
                 '填充方式',
                 DefaultFillStyle,
@@ -465,18 +496,16 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
           ) : null}
           {selection.dash !== null ? (
             <InspectorSection title="描边">
+              <SelectionStrokeWidth editor={editor} />
+              {selection.hasStrokeColor ? (
+                <SelectionColorPicker editor={editor} channel="stroke" />
+              ) : null}
               <div className="grid grid-cols-2 gap-2">
                 {selectStyle(
                   '线型',
                   DefaultDashStyle,
                   selection.dash,
                   dashOptions,
-                )}
-                {selectStyle(
-                  '粗细',
-                  DefaultSizeStyle,
-                  selection.size,
-                  sizeOptions,
                 )}
               </div>
             </InspectorSection>

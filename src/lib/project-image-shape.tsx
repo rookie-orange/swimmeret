@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { projectColorShapeUtils } from './project-shape-colors'
 import {
   ImageShapeUtil,
   type SvgExportContext,
@@ -126,4 +127,7 @@ class ProjectImageShapeUtil extends ImageShapeUtil {
   }
 }
 
-export const projectShapeUtils = [ProjectImageShapeUtil]
+export const projectShapeUtils = [
+  ProjectImageShapeUtil,
+  ...projectColorShapeUtils,
+]

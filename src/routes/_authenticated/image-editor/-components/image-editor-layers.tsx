@@ -383,7 +383,7 @@ export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
   if (collapsedTab === activeTab) {
     return (
       <Button
-        className="absolute top-4 right-4 z-20 hidden xl:inline-flex"
+        className="absolute top-8 right-4 z-20 hidden xl:inline-flex"
         aria-label="展开属性与图层面板"
         onClick={() => setCollapsedTab(null)}
         variant="secondary"
@@ -395,7 +395,7 @@ export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
   }
 
   return (
-    <aside className="absolute top-4 right-4 bottom-4 z-20 hidden w-80 min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-foreground/5 xl:flex">
+    <aside className="absolute top-8 right-4 bottom-4 z-20 hidden w-80 min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-foreground/5 xl:flex">
       <Tabs
         className="min-h-0 flex-1 gap-0"
         onValueChange={(value) =>

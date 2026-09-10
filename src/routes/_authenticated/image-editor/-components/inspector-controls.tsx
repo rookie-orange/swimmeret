@@ -73,14 +73,16 @@ export function InspectorNumber({
   value,
   min,
   max,
+  step = 'any',
   disabled,
   onCommit,
 }: {
   label: string
-  suffix: string
+  suffix?: string
   value: number | null
   min?: number
   max?: number
+  step?: number | 'any'
   disabled?: boolean
   onCommit: (value: number) => void
 }) {
@@ -106,7 +108,7 @@ export function InspectorNumber({
         aria-label={label}
         disabled={disabled}
         type="number"
-        step="any"
+        step={step}
         min={min}
         max={max}
         placeholder="混合"
@@ -121,9 +123,11 @@ export function InspectorNumber({
           }
         }}
       />
-      <InputGroupAddon align="inline-end">
-        <InputGroupText>{suffix}</InputGroupText>
-      </InputGroupAddon>
+      {suffix ? (
+        <InputGroupAddon align="inline-end">
+          <InputGroupText>{suffix}</InputGroupText>
+        </InputGroupAddon>
+      ) : null}
     </InputGroup>
   )
 }
