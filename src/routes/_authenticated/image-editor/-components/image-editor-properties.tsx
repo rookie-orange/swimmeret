@@ -1,11 +1,5 @@
-import { useId, useState } from 'react'
-import {
-  CanvasIcon,
-  Grid02Icon,
-  Magnet01Icon,
-  RotateCcwIcon,
-  SlidersHorizontalIcon,
-} from '@hugeicons/core-free-icons'
+import { useId } from 'react'
+import { CursorPointer01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowShapeArrowheadEndStyle,
@@ -27,10 +21,8 @@ import {
   type TLImageShape,
   useValue,
 } from 'tldraw'
-
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -39,28 +31,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
-import {
-  CANVAS_BACKGROUNDS,
-  getCanvasBackgroundId,
-} from '@/lib/canvas-background'
-import {
-  DEFAULT_IMAGE_ADJUSTMENTS,
-  getImageAdjustments,
-  type ImageAdjustments,
-} from '@/lib/project-image-adjustments'
+import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { InspectorActions } from './inspector-actions'
+import { InspectorNumber, InspectorSection } from './inspector-controls'
+import { InspectorImage, InspectorImageDescription } from './inspector-image'
+import { InspectorTransform } from './inspector-transform'
 
 interface ImageEditorPropertiesProps {
   editor: Editor
 }
-
 interface SelectOption {
   label: string
   value: string
 }
-
 const colorOptions = [
   { value: 'black', label: '墨黑', className: 'bg-canvas-swatch-black' },
   { value: 'grey', label: '灰色', className: 'bg-canvas-swatch-grey' },
@@ -185,18 +170,6 @@ const splineOptions = [
   { value: 'cubic', label: '曲线' },
 ] as const
 
-const adjustmentLabels: Array<{
-  key: keyof ImageAdjustments
-  label: string
-}> = [
-  { key: 'brightness', label: '亮度' },
-  { key: 'exposure', label: '曝光' },
-  { key: 'contrast', label: '对比度' },
-  { key: 'saturation', label: '饱和度' },
-  { key: 'vibrance', label: '鲜艳度' },
-  { key: 'vignette', label: '暗角' },
-]
-
 type InspectorStyleValue<T> = T | 'mixed' | null
 
 function getInspectorStyle<T>(
@@ -209,17 +182,27 @@ function getInspectorStyle<T>(
 }
 
 function updateSelectedStyle<T>(editor: Editor, style: StyleProp<T>, value: T) {
+  if (
+    editor.getIsReadonly() ||
+    editor.isIn('select.crop') ||
+    editor
+      .getSelectedShapes()
+      .some((shape) => editor.isShapeOrAncestorLocked(shape))
+  )
+    return
   editor.markHistoryStoppingPoint(`change inspector style ${style.id}`)
   editor.setStyleForSelectedShapes(style, value)
   editor.focus()
 }
 
 function PropertySelect({
+  disabled,
   label,
   onValueChange,
   options,
   value,
 }: {
+  disabled: boolean
   label: string
   onValueChange: (value: string) => void
   options: readonly SelectOption[]
@@ -231,13 +214,14 @@ function PropertySelect({
     <Field className="gap-2">
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Select
+        disabled={disabled}
         items={options}
         onValueChange={(nextValue) => {
           if (nextValue) onValueChange(nextValue)
         }}
         value={value === 'mixed' ? null : value}
       >
-        <SelectTrigger className="w-full" id={id} size="sm">
+        <SelectTrigger className="w-full rounded-xl" id={id}>
           <SelectValue placeholder={value === 'mixed' ? '混合' : '未设置'} />
         </SelectTrigger>
         <SelectContent alignItemWithTrigger={false}>
@@ -254,226 +238,6 @@ function PropertySelect({
   )
 }
 
-function CanvasProperties({ editor }: ImageEditorPropertiesProps) {
-  const canvasState = useValue(
-    'image editor canvas properties',
-    () => ({
-      background: getCanvasBackgroundId(
-        editor.getCurrentPage()?.meta.canvasBackground,
-      ),
-      isGridMode: editor.getInstanceState().isGridMode,
-      isSnapMode: editor.user.getIsSnapMode(),
-    }),
-    [editor],
-  )
-
-  return (
-    <div className="flex flex-col">
-      <div className="flex items-center gap-3 px-4 py-4">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-          <HugeiconsIcon icon={CanvasIcon} />
-        </span>
-        <div>
-          <p className="text-sm font-semibold">画布</p>
-          <p className="text-xs text-muted-foreground">当前页面</p>
-        </div>
-      </div>
-      <Separator />
-      <section className="flex flex-col gap-3 px-4 py-4">
-        <p className="text-xs font-medium text-muted-foreground">背景</p>
-        <div className="grid grid-cols-3 gap-2">
-          {CANVAS_BACKGROUNDS.map((option) => (
-            <Button
-              aria-label={`画布背景：${option.label}`}
-              aria-pressed={canvasState.background === option.id}
-              className={cn(
-                'h-auto flex-col gap-1.5 rounded-xl px-1 py-2 text-xs',
-                canvasState.background === option.id && 'ring-2 ring-ring',
-              )}
-              key={option.id}
-              onClick={() => {
-                const page = editor.getCurrentPage()
-                if (!page) return
-                editor.markHistoryStoppingPoint('change canvas background')
-                editor.updatePage({
-                  id: page.id,
-                  meta: { ...page.meta, canvasBackground: option.id },
-                })
-                editor.focus()
-              }}
-              variant="ghost"
-            >
-              <span
-                className={cn(
-                  'size-7 rounded-lg border border-border',
-                  option.className,
-                )}
-              />
-              {option.label}
-            </Button>
-          ))}
-        </div>
-      </section>
-      <Separator />
-      <section className="grid grid-cols-2 gap-2 px-4 py-4">
-        <Button
-          aria-pressed={canvasState.isGridMode}
-          onClick={() => {
-            editor.updateInstanceState({
-              isGridMode: !editor.getInstanceState().isGridMode,
-            })
-            editor.focus()
-          }}
-          size="sm"
-          variant={canvasState.isGridMode ? 'secondary' : 'outline'}
-        >
-          <HugeiconsIcon data-icon="inline-start" icon={Grid02Icon} />
-          网格
-        </Button>
-        <Button
-          aria-pressed={canvasState.isSnapMode}
-          onClick={() => {
-            editor.user.updateUserPreferences({
-              isSnapMode: !editor.user.getIsSnapMode(),
-            })
-            editor.focus()
-          }}
-          size="sm"
-          variant={canvasState.isSnapMode ? 'secondary' : 'outline'}
-        >
-          <HugeiconsIcon data-icon="inline-start" icon={Magnet01Icon} />
-          吸附
-        </Button>
-      </section>
-    </div>
-  )
-}
-
-function ImageAltTextField({
-  editor,
-  shape,
-}: {
-  editor: Editor
-  shape: TLImageShape
-}) {
-  const [altText, setAltText] = useState(shape.props.altText ?? '')
-
-  const save = () => {
-    const currentShape = editor.getShape<TLImageShape>(shape.id)
-    if (!currentShape || currentShape.props.altText === altText.trim()) return
-    editor.markHistoryStoppingPoint('set image alt text')
-    editor.updateShape({
-      id: currentShape.id,
-      type: currentShape.type,
-      props: { altText: altText.trim() },
-    })
-  }
-
-  return (
-    <Field className="gap-2">
-      <FieldLabel htmlFor={`image-alt-text-${shape.id}`}>替代文本</FieldLabel>
-      <Input
-        id={`image-alt-text-${shape.id}`}
-        onBlur={save}
-        onChange={(event) => setAltText(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') event.currentTarget.blur()
-        }}
-        placeholder="描述图片内容"
-        value={altText}
-      />
-    </Field>
-  )
-}
-
-function ImageAdjustmentControls({
-  editor,
-  shape,
-}: {
-  editor: Editor
-  shape: TLImageShape
-}) {
-  const adjustments = getImageAdjustments(shape)
-
-  const updateAdjustment = (key: keyof ImageAdjustments, value: number) => {
-    const currentShape = editor.getShape<TLImageShape>(shape.id)
-    if (!currentShape) return
-    editor.updateShape({
-      id: currentShape.id,
-      type: currentShape.type,
-      meta: {
-        ...currentShape.meta,
-        imageAdjustments: {
-          ...getImageAdjustments(currentShape),
-          [key]: value,
-        },
-      },
-    })
-  }
-
-  return (
-    <section className="flex flex-col gap-4 px-4 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <HugeiconsIcon
-            className="text-muted-foreground"
-            icon={SlidersHorizontalIcon}
-          />
-          <p className="text-xs font-medium text-muted-foreground">图片调整</p>
-        </div>
-        <Button
-          aria-label="重置图片调整"
-          onClick={() => {
-            const currentShape = editor.getShape<TLImageShape>(shape.id)
-            if (!currentShape) return
-            editor.markHistoryStoppingPoint('reset image adjustments')
-            editor.updateShape({
-              id: currentShape.id,
-              type: currentShape.type,
-              meta: {
-                ...currentShape.meta,
-                imageAdjustments: { ...DEFAULT_IMAGE_ADJUSTMENTS },
-              },
-            })
-            editor.focus()
-          }}
-          size="icon-xs"
-          variant="ghost"
-        >
-          <HugeiconsIcon icon={RotateCcwIcon} />
-        </Button>
-      </div>
-      <div className="flex flex-col gap-4">
-        {adjustmentLabels.map(({ key, label }) => (
-          <label className="flex flex-col gap-2" key={key}>
-            <span className="flex items-center justify-between text-xs">
-              <span>{label}</span>
-              <output className="tabular-nums text-muted-foreground">
-                {adjustments[key]}
-              </output>
-            </span>
-            <Slider
-              aria-label={label}
-              max={2}
-              min={key === 'vignette' ? 0 : -2}
-              onKeyDown={() =>
-                editor.markHistoryStoppingPoint(`adjust image ${key}`)
-              }
-              onPointerDown={() =>
-                editor.markHistoryStoppingPoint(`adjust image ${key}`)
-              }
-              onValueChange={(value) => updateAdjustment(key, value)}
-              step={1}
-              value={adjustments[key]}
-            />
-          </label>
-        ))}
-      </div>
-      <ImageAltTextField editor={editor} key={shape.id} shape={shape} />
-    </section>
-  )
-}
-
 export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
   const selection = useValue(
     'image editor inspector selection',
@@ -485,6 +249,16 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
 
       return {
         count: shapes.length,
+        hasText: shapes.some(
+          (shape) =>
+            shape.type === 'text' ||
+            Boolean(editor.getShapeUtil(shape).getText(shape)?.trim()),
+        ),
+        ids: shapes.map((shape) => shape.id).join(','),
+        disabled:
+          editor.getIsReadonly() ||
+          shapes.some((shape) => editor.isShapeOrAncestorLocked(shape)),
+        cropping: editor.isIn('select.crop'),
         imageShape:
           onlyShape?.type === 'image' ? (onlyShape as TLImageShape) : null,
         shapeType: onlyShape?.type ?? null,
@@ -510,312 +284,289 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
     [editor],
   )
 
-  if (selection.count === 0) return <CanvasProperties editor={editor} />
-
-  const hasAppearanceStyles =
-    selection.color !== null ||
-    selection.fill !== null ||
-    selection.dash !== null ||
-    selection.size !== null ||
-    selection.font !== null
-
-  return (
-    <div className="flex min-h-0 flex-col overflow-y-auto">
-      <div className="flex items-center gap-3 px-4 py-4">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-          <HugeiconsIcon icon={SlidersHorizontalIcon} />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
-            {selection.count === 1
-              ? selection.shapeType === 'image'
-                ? '图片属性'
-                : '元素属性'
-              : `${selection.count} 个元素`}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {selection.count === 1 ? selection.shapeType : '混合选择'}
+  if (selection.count === 0)
+    return (
+      <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
+        <div className="flex size-20 items-center justify-center rounded-3xl bg-muted text-muted-foreground">
+          <HugeiconsIcon
+            icon={CursorPointer01Icon}
+            className="size-9"
+            strokeWidth={1.3}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium">请选择元素进行编辑</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            选择图片、图形或文字，
+            <br />
+            在这里调整外观与布局
           </p>
         </div>
       </div>
-      <Separator />
-
-      {hasAppearanceStyles ? (
-        <>
-          <section className="flex flex-col gap-4 px-4 py-4">
-            <p className="text-xs font-medium text-muted-foreground">外观</p>
-            {selection.color !== null ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs">颜色</p>
-                <div className="grid grid-cols-6 gap-1.5">
-                  {colorOptions.map((option) => (
-                    <Button
-                      aria-label={option.label}
-                      aria-pressed={selection.color === option.value}
-                      className={cn(
-                        'rounded-lg border border-transparent p-1',
-                        selection.color === option.value &&
-                          'border-border ring-2 ring-ring',
-                      )}
-                      key={option.value}
-                      onClick={() =>
-                        updateSelectedStyle(
-                          editor,
-                          DefaultColorStyle,
-                          option.value,
-                        )
-                      }
-                      size="icon-sm"
-                      title={option.label}
-                      variant="ghost"
-                    >
-                      <span
-                        className={cn(
-                          'size-5 rounded-full border border-foreground/10',
-                          option.className,
-                        )}
-                      />
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            <div className="grid grid-cols-2 gap-3">
-              {selection.fill !== null ? (
-                <PropertySelect
-                  label="填充"
-                  onValueChange={(value) =>
-                    updateSelectedStyle(
-                      editor,
-                      DefaultFillStyle,
-                      value as (typeof fillOptions)[number]['value'],
-                    )
-                  }
-                  options={fillOptions}
-                  value={selection.fill}
-                />
-              ) : null}
-              {selection.dash !== null ? (
-                <PropertySelect
-                  label="线条"
-                  onValueChange={(value) =>
-                    updateSelectedStyle(
-                      editor,
-                      DefaultDashStyle,
-                      value as (typeof dashOptions)[number]['value'],
-                    )
-                  }
-                  options={dashOptions}
-                  value={selection.dash}
-                />
-              ) : null}
-              {selection.size !== null ? (
-                <PropertySelect
-                  label="粗细"
-                  onValueChange={(value) =>
-                    updateSelectedStyle(
-                      editor,
-                      DefaultSizeStyle,
-                      value as (typeof sizeOptions)[number]['value'],
-                    )
-                  }
-                  options={sizeOptions}
-                  value={selection.size}
-                />
-              ) : null}
-              {selection.font !== null ? (
-                <PropertySelect
-                  label="字体"
-                  onValueChange={(value) =>
-                    updateSelectedStyle(
-                      editor,
-                      DefaultFontStyle,
-                      value as (typeof fontOptions)[number]['value'],
-                    )
-                  }
-                  options={fontOptions}
-                  value={selection.font}
-                />
-              ) : null}
-            </div>
-          </section>
-          <Separator />
-        </>
-      ) : null}
-
-      <section className="flex flex-col gap-3 px-4 py-4">
-        <label className="flex flex-col gap-2">
-          <span className="flex items-center justify-between text-xs">
-            <span>不透明度</span>
-            <output className="tabular-nums text-muted-foreground">
-              {selection.opacity === 'mixed'
-                ? '混合'
-                : `${Math.round(selection.opacity * 100)}%`}
-            </output>
+    )
+  const disabled = selection.disabled || selection.cropping
+  const typeLabels: Record<string, string> = {
+    image: '图片',
+    text: '文字',
+    geo: '图形',
+    draw: '画笔',
+    line: '线条',
+    arrow: '箭头',
+    group: '组合',
+    note: '便签',
+    frame: '画框',
+  }
+  const title =
+    selection.count > 1
+      ? '多个元素'
+      : (typeLabels[selection.shapeType ?? ''] ?? '元素')
+  const selectStyle = <T extends string>(
+    label: string,
+    style: StyleProp<T>,
+    value: InspectorStyleValue<T>,
+    options: readonly SelectOption[],
+  ) =>
+    value !== null ? (
+      <PropertySelect
+        disabled={disabled}
+        label={label}
+        value={value}
+        options={options}
+        onValueChange={(next) => updateSelectedStyle(editor, style, next as T)}
+      />
+    ) : null
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex shrink-0 flex-col gap-3 px-5 py-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">{title}</h2>
+          <span className="text-xs text-muted-foreground">
+            {selection.count > 1
+              ? `已选中 ${selection.count} 个`
+              : selection.disabled
+                ? '已锁定或只读'
+                : '当前选中'}
           </span>
-          <Slider
-            aria-label="不透明度"
-            max={100}
-            min={0}
-            onKeyDown={() =>
-              editor.markHistoryStoppingPoint('change shape opacity')
-            }
-            onPointerDown={() =>
-              editor.markHistoryStoppingPoint('change shape opacity')
-            }
-            onValueChange={(value) =>
-              editor.setOpacityForSelectedShapes(value / 100)
-            }
-            step={5}
-            value={
-              selection.opacity === 'mixed' ? 100 : selection.opacity * 100
-            }
-          />
-        </label>
-      </section>
-
-      {selection.geo !== null ||
-      selection.arrowKind !== null ||
-      selection.spline !== null ? (
-        <>
-          <Separator />
-          <section className="grid grid-cols-2 gap-3 px-4 py-4">
-            {selection.geo !== null ? (
-              <PropertySelect
-                label="形状"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    GeoShapeGeoStyle,
-                    value as (typeof geoOptions)[number]['value'],
-                  )
-                }
-                options={geoOptions}
-                value={selection.geo}
-              />
-            ) : null}
-            {selection.arrowKind !== null ? (
-              <PropertySelect
-                label="箭头路径"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    ArrowShapeKindStyle,
-                    value as (typeof arrowKindOptions)[number]['value'],
-                  )
-                }
-                options={arrowKindOptions}
-                value={selection.arrowKind}
-              />
-            ) : null}
-            {selection.spline !== null ? (
-              <PropertySelect
-                label="线条路径"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    LineShapeSplineStyle,
-                    value as (typeof splineOptions)[number]['value'],
-                  )
-                }
-                options={splineOptions}
-                value={selection.spline}
-              />
-            ) : null}
-            {selection.arrowheadStart !== null ? (
-              <PropertySelect
-                label="起点"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    ArrowShapeArrowheadStartStyle,
-                    value as (typeof arrowheadOptions)[number]['value'],
-                  )
-                }
-                options={arrowheadOptions}
-                value={selection.arrowheadStart}
-              />
-            ) : null}
-            {selection.arrowheadEnd !== null ? (
-              <PropertySelect
-                label="终点"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    ArrowShapeArrowheadEndStyle,
-                    value as (typeof arrowheadOptions)[number]['value'],
-                  )
-                }
-                options={arrowheadOptions}
-                value={selection.arrowheadEnd}
-              />
-            ) : null}
-          </section>
-        </>
-      ) : null}
-
-      {selection.textAlign !== null ||
-      selection.horizontalAlign !== null ||
-      selection.verticalAlign !== null ? (
-        <>
-          <Separator />
-          <section className="grid grid-cols-2 gap-3 px-4 py-4">
-            {selection.textAlign !== null ? (
-              <PropertySelect
-                label="文字对齐"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    DefaultTextAlignStyle,
-                    value as (typeof textAlignOptions)[number]['value'],
-                  )
-                }
-                options={textAlignOptions}
-                value={selection.textAlign}
-              />
-            ) : null}
-            {selection.horizontalAlign !== null ? (
-              <PropertySelect
-                label="标签对齐"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    DefaultHorizontalAlignStyle,
-                    value as (typeof horizontalAlignOptions)[number]['value'],
-                  )
-                }
-                options={horizontalAlignOptions}
-                value={selection.horizontalAlign}
-              />
-            ) : null}
-            {selection.verticalAlign !== null ? (
-              <PropertySelect
-                label="垂直对齐"
-                onValueChange={(value) =>
-                  updateSelectedStyle(
-                    editor,
-                    DefaultVerticalAlignStyle,
-                    value as (typeof verticalAlignOptions)[number]['value'],
-                  )
-                }
-                options={verticalAlignOptions}
-                value={selection.verticalAlign}
-              />
-            ) : null}
-          </section>
-        </>
-      ) : null}
-
-      {selection.imageShape ? (
-        <>
-          <Separator />
-          <ImageAdjustmentControls
-            editor={editor}
+        </div>
+        <InspectorActions editor={editor} />
+      </header>
+      <Separator />
+      <div className="min-h-0 flex-1 overflow-y-auto pb-5">
+        {selection.imageShape ? (
+          <InspectorImage
             key={selection.imageShape.id}
+            editor={editor}
             shape={selection.imageShape}
+            disabled={selection.disabled}
           />
-        </>
-      ) : null}
+        ) : null}
+        <fieldset
+          disabled={disabled}
+          className="min-w-0 border-0 p-0 disabled:opacity-50"
+        >
+          {selection.geo !== null ? (
+            <InspectorSection>
+              {selectStyle(
+                '调整形状',
+                GeoShapeGeoStyle,
+                selection.geo,
+                geoOptions,
+              )}
+            </InspectorSection>
+          ) : null}
+          {selection.font !== null && selection.hasText ? (
+            <InspectorSection title="文字">
+              <div className="grid grid-cols-2 gap-2">
+                {selectStyle(
+                  '字体',
+                  DefaultFontStyle,
+                  selection.font,
+                  fontOptions,
+                )}
+                {selectStyle('字号', DefaultSizeStyle, selection.size, [
+                  { value: 's', label: '小' },
+                  { value: 'm', label: '中' },
+                  { value: 'l', label: '大' },
+                  { value: 'xl', label: '特大' },
+                ])}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {selectStyle(
+                  '文字对齐',
+                  DefaultTextAlignStyle,
+                  selection.textAlign,
+                  textAlignOptions,
+                )}
+                {selectStyle(
+                  '标签对齐',
+                  DefaultHorizontalAlignStyle,
+                  selection.horizontalAlign,
+                  horizontalAlignOptions,
+                )}
+                {selectStyle(
+                  '垂直对齐',
+                  DefaultVerticalAlignStyle,
+                  selection.verticalAlign,
+                  verticalAlignOptions,
+                )}
+              </div>
+            </InspectorSection>
+          ) : null}
+          {selection.color !== null ? (
+            <InspectorSection
+              title={selection.shapeType === 'text' ? '文字颜色' : '颜色'}
+            >
+              <div className="grid grid-cols-7 gap-1">
+                {colorOptions.map((option) => (
+                  <Button
+                    key={option.value}
+                    aria-label={option.label}
+                    aria-pressed={selection.color === option.value}
+                    title={option.label}
+                    size="icon-sm"
+                    variant="ghost"
+                    className={cn(
+                      'rounded-lg p-1',
+                      selection.color === option.value && 'ring-2 ring-ring',
+                    )}
+                    onClick={() =>
+                      updateSelectedStyle(
+                        editor,
+                        DefaultColorStyle,
+                        option.value,
+                      )
+                    }
+                  >
+                    <span
+                      className={cn(
+                        'size-5 rounded-md border border-foreground/10',
+                        option.className,
+                      )}
+                    />
+                  </Button>
+                ))}
+              </div>
+              {selection.color === 'mixed' ? (
+                <p className="text-xs text-muted-foreground">
+                  当前选区包含多种颜色
+                </p>
+              ) : null}
+            </InspectorSection>
+          ) : null}
+          {selection.fill !== null ? (
+            <InspectorSection title="填充">
+              {selectStyle(
+                '填充方式',
+                DefaultFillStyle,
+                selection.fill,
+                fillOptions,
+              )}
+            </InspectorSection>
+          ) : null}
+          {selection.dash !== null ? (
+            <InspectorSection title="描边">
+              <div className="grid grid-cols-2 gap-2">
+                {selectStyle(
+                  '线型',
+                  DefaultDashStyle,
+                  selection.dash,
+                  dashOptions,
+                )}
+                {selectStyle(
+                  '粗细',
+                  DefaultSizeStyle,
+                  selection.size,
+                  sizeOptions,
+                )}
+              </div>
+            </InspectorSection>
+          ) : null}
+          {selection.arrowKind !== null || selection.spline !== null ? (
+            <InspectorSection title="路径">
+              <div className="grid grid-cols-2 gap-2">
+                {selectStyle(
+                  '箭头路径',
+                  ArrowShapeKindStyle,
+                  selection.arrowKind,
+                  arrowKindOptions,
+                )}
+                {selectStyle(
+                  '线条路径',
+                  LineShapeSplineStyle,
+                  selection.spline,
+                  splineOptions,
+                )}
+                {selectStyle(
+                  '起点',
+                  ArrowShapeArrowheadStartStyle,
+                  selection.arrowheadStart,
+                  arrowheadOptions,
+                )}
+                {selectStyle(
+                  '终点',
+                  ArrowShapeArrowheadEndStyle,
+                  selection.arrowheadEnd,
+                  arrowheadOptions,
+                )}
+              </div>
+            </InspectorSection>
+          ) : null}
+          <InspectorSection title="不透明度">
+            <div className="flex items-center gap-4">
+              <Slider
+                aria-label="不透明度"
+                disabled={disabled}
+                min={0}
+                max={100}
+                step={1}
+                value={
+                  selection.opacity === 'mixed' ? 100 : selection.opacity * 100
+                }
+                onPointerDown={() =>
+                  editor.markHistoryStoppingPoint('change inspector opacity')
+                }
+                onKeyDown={() =>
+                  editor.markHistoryStoppingPoint('change inspector opacity')
+                }
+                onValueChange={(value) =>
+                  editor.setOpacityForSelectedShapes(value / 100)
+                }
+              />
+              <div className="w-24 shrink-0">
+                <InspectorNumber
+                  label="不透明度数值"
+                  suffix="%"
+                  value={
+                    selection.opacity === 'mixed'
+                      ? null
+                      : selection.opacity * 100
+                  }
+                  min={0}
+                  max={100}
+                  disabled={disabled}
+                  onCommit={(value) => {
+                    editor.markHistoryStoppingPoint('change inspector opacity')
+                    editor.setOpacityForSelectedShapes(value / 100)
+                  }}
+                />
+              </div>
+            </div>
+          </InspectorSection>
+          <InspectorTransform
+            editor={editor}
+            disabled={disabled}
+            key={selection.ids}
+          />
+          {selection.imageShape ? (
+            <InspectorImageDescription
+              key={selection.imageShape.id}
+              editor={editor}
+              shape={selection.imageShape}
+              disabled={disabled}
+            />
+          ) : null}
+        </fieldset>
+      </div>
     </div>
   )
 }

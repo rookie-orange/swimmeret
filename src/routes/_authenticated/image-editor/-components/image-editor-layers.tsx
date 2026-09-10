@@ -1,6 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DragDropVerticalIcon,
+  ArrowRightToLineIcon,
+  ArrowLeftFromLineIcon,
   EyeIcon,
   EyeOffIcon,
   ImageAdd01Icon,
@@ -376,9 +378,24 @@ function LayerDecompositionAction({ editor }: { editor: Editor }) {
 
 export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
   const { activeTab, setActiveTab } = useImageEditorInspector()
+  const [collapsedTab, setCollapsedTab] = useState<string | null>(null)
+
+  if (collapsedTab === activeTab) {
+    return (
+      <Button
+        className="absolute top-4 right-4 z-20 hidden xl:inline-flex"
+        aria-label="展开属性与图层面板"
+        onClick={() => setCollapsedTab(null)}
+        variant="secondary"
+        size="icon"
+      >
+        <HugeiconsIcon icon={ArrowLeftFromLineIcon} />
+      </Button>
+    )
+  }
 
   return (
-    <aside className="absolute top-4 right-4 bottom-4 z-20 hidden w-72 min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-2xl shadow-foreground/10 backdrop-blur-xl xl:flex">
+    <aside className="absolute top-4 right-4 bottom-4 z-20 hidden w-80 min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-foreground/5 xl:flex">
       <Tabs
         className="min-h-0 flex-1 gap-0"
         onValueChange={(value) =>
@@ -386,8 +403,8 @@ export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
         }
         value={activeTab}
       >
-        <div className="border-b border-border px-3 py-2">
-          <TabsList className="grid w-full grid-cols-2 rounded-xl">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <TabsList className="grid flex-1 grid-cols-2 rounded-xl">
             <TabsTrigger value="layers">
               <HugeiconsIcon data-icon="inline-start" icon={Layers01Icon} />
               图层
@@ -400,6 +417,14 @@ export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
               属性
             </TabsTrigger>
           </TabsList>
+          <Button
+            aria-label="收起属性与图层面板"
+            size="icon-sm"
+            variant="ghost"
+            onClick={() => setCollapsedTab(activeTab)}
+          >
+            <HugeiconsIcon icon={ArrowRightToLineIcon} />
+          </Button>
         </div>
 
         <TabsContent
@@ -446,7 +471,7 @@ export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
         </TabsContent>
 
         <TabsContent
-          className="min-h-0 flex-1 overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
           value="properties"
         >
           {editor ? (

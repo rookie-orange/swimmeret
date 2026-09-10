@@ -287,7 +287,7 @@ export function ImageEditorDock({
   )
 
   return (
-    <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-4 xl:right-80">
+    <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-4 xl:right-88">
       <div
         className="pointer-events-auto w-fit max-w-full rounded-2xl border border-border bg-card/95 shadow-2xl shadow-foreground/10 backdrop-blur-xl"
         onPointerDown={(event) => event.stopPropagation()}

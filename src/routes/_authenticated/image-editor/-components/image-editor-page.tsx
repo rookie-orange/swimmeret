@@ -303,7 +303,7 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
             type="file"
           />
 
-          <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-80">
+          <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-88">
             <header className="pointer-events-auto flex min-w-0 items-center rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
               <ImageEditorPageMenu editor={editor} />
             </header>
