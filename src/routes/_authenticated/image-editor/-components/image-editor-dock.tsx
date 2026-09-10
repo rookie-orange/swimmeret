@@ -1,10 +1,18 @@
-import { useCallback, useState } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import {
   ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowUp01Icon,
+  ArrowUp02Icon,
   ArrowUpRight03Icon,
+  Cancel01Icon,
   CloudIcon,
   Cursor01Icon,
   DiamondIcon,
@@ -17,8 +25,6 @@ import {
   HighlighterIcon,
   ImageAdd01Icon,
   LineIcon,
-  LockKeyholeIcon,
-  LockKeyholeOpenIcon,
   MoreHorizontalIcon,
   NoteIcon,
   OctagonIcon,
@@ -34,6 +40,12 @@ import {
   TriangleIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
+import {
+  AnimatePresence,
+  motion,
+  useIsPresent,
+  useReducedMotion,
+} from 'motion/react'
 import { GeoShapeGeoStyle, type Editor, useValue } from 'tldraw'
 
 import { Button } from '@/components/ui/button'
@@ -46,12 +58,21 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Separator } from '@/components/ui/separator'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+
+import { AiToolIcon } from './ai-tool-icon'
+import { editorCapsuleClassName } from './editor-capsule'
 
 interface ToolDefinition {
   id: string
@@ -103,6 +124,13 @@ const geoTools = [
   { id: 'heart', label: '心形', icon: HeartIcon },
 ] as const satisfies readonly ToolDefinition[]
 
+const quickGeoTools = [
+  geoTools[0],
+  geoTools[2],
+  { ...geoTools[1], label: '圆形' },
+  geoTools[3],
+] as const satisfies readonly ToolDefinition[]
+
 function getToolLabel(tool: ToolDefinition) {
   return tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label
 }
@@ -148,7 +176,7 @@ function ShapeToolPicker({
   onActivate,
 }: {
   activeToolId: string
-  activeGeo: (typeof geoTools)[number]
+  activeGeo: ToolDefinition
   disabled: boolean
   onActivate: (toolId: string) => void
 }) {
@@ -156,66 +184,170 @@ function ShapeToolPicker({
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="flex shrink-0 items-center">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              aria-label={`形状：${getToolLabel(activeGeo)}`}
-              aria-pressed={isActive}
-              className="rounded-r-sm"
-              disabled={disabled}
-              onClick={() => onActivate(activeGeo.id)}
-              size="icon-lg"
-              variant={isActive ? 'default' : 'ghost'}
-            />
-          }
+    <DropdownMenu
+      modal={false}
+      onOpenChange={setIsOpen}
+      open={isOpen && !disabled}
+    >
+      <DropdownMenuTrigger
+        closeDelay={150}
+        delay={180}
+        openOnHover
+        onClick={(event) => {
+          // Keep keyboard and touch activation available for the menu.
+          if (
+            event.detail === 0 ||
+            (event.nativeEvent instanceof PointerEvent &&
+              event.nativeEvent.pointerType === 'touch')
+          )
+            return
+
+          event.preventBaseUIHandler()
+          setIsOpen(false)
+          onActivate(activeGeo.id)
+        }}
+        render={
+          <Button
+            aria-label={`形状：${getToolLabel(activeGeo)}`}
+            aria-pressed={isActive}
+            disabled={disabled}
+            size="icon-lg"
+            variant={isActive ? 'default' : 'ghost'}
+          />
+        }
+      >
+        <HugeiconsIcon icon={activeGeo.icon} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="center"
+        aria-label="快捷形状"
+        className="w-56"
+        finalFocus={(interactionType) => interactionType === 'keyboard'}
+        side="top"
+        sideOffset={8}
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuRadioGroup
+            className="grid grid-cols-4 gap-0.5"
+            value={activeGeo.id}
+          >
+            {quickGeoTools.map((tool) => (
+              <DropdownMenuRadioItem
+                className="flex-col gap-2 px-2 py-3 text-xs data-checked:bg-primary data-checked:text-primary-foreground [&>span]:hidden"
+                key={tool.id}
+                onClick={() => {
+                  setIsOpen(false)
+                  onActivate(tool.id)
+                }}
+                value={tool.id}
+              >
+                <HugeiconsIcon icon={tool.icon} />
+                {tool.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function DockPanel({
+  children,
+  onEntered,
+}: {
+  children: ReactNode
+  onEntered?: () => void
+}) {
+  const isPresent = useIsPresent()
+  const reduceMotion = useReducedMotion()
+
+  return (
+    <motion.div
+      animate="visible"
+      aria-hidden={!isPresent}
+      className="w-full"
+      exit="exit"
+      inert={!isPresent}
+      initial="enter"
+      onAnimationComplete={(definition) => {
+        if (definition === 'visible' && isPresent) onEntered?.()
+      }}
+      transition={
+        reduceMotion ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }
+      }
+      variants={{
+        enter: {
+          opacity: 0,
+          y: reduceMotion ? 0 : 6,
+          scale: reduceMotion ? 1 : 0.98,
+        },
+        visible: { opacity: 1, y: 0, scale: 1 },
+        exit: {
+          opacity: 0,
+          y: reduceMotion ? 0 : -6,
+          scale: reduceMotion ? 1 : 0.98,
+        },
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+function DockAiInput({
+  draft,
+  inputRef,
+  onDraftChange,
+  onClose,
+}: {
+  draft: string
+  inputRef: RefObject<HTMLInputElement | null>
+  onDraftChange: (draft: string) => void
+  onClose: () => void
+}) {
+  return (
+    <InputGroup
+      aria-label="AI 编辑"
+      className="h-12 rounded-2xl border-0 bg-transparent"
+      onKeyDown={(event) => {
+        event.stopPropagation()
+        if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
+          event.preventDefault()
+          onClose()
+        }
+      }}
+      onKeyUp={(event) => event.stopPropagation()}
+    >
+      <InputGroupInput
+        aria-label="AI 编辑指令"
+        autoFocus
+        onChange={(event) => onDraftChange(event.target.value)}
+        placeholder="描述你想对图像做的修改…"
+        ref={inputRef}
+        value={draft}
+      />
+      <InputGroupAddon align="inline-start">
+        <InputGroupButton
+          aria-label="关闭 AI 输入"
+          onClick={onClose}
+          size="icon-sm"
         >
-          <HugeiconsIcon icon={activeGeo.icon} />
-        </TooltipTrigger>
-        <TooltipContent>形状：{getToolLabel(activeGeo)}</TooltipContent>
-      </Tooltip>
-      <DropdownMenu onOpenChange={setIsOpen} open={isOpen}>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              aria-label="选择形状"
-              className="w-5 rounded-l-sm px-0"
-              disabled={disabled}
-              size="icon-lg"
-              variant={isActive ? 'default' : 'ghost'}
-            />
-          }
+          <HugeiconsIcon icon={Cancel01Icon} />
+        </InputGroupButton>
+      </InputGroupAddon>
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton
+          aria-label="发送指令"
+          disabled
+          size="icon-sm"
+          title="AI 编辑即将开放"
+          variant="default"
         >
-          <HugeiconsIcon icon={ArrowUp01Icon} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="center"
-          className="w-72"
-          side="top"
-          sideOffset={8}
-        >
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>选择形状</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              className="grid grid-cols-2 gap-0.5"
-              onValueChange={(toolId) => {
-                setIsOpen(false)
-                onActivate(toolId)
-              }}
-              value={activeGeo.id}
-            >
-              {geoTools.map((tool) => (
-                <DropdownMenuRadioItem key={tool.id} value={tool.id}>
-                  <HugeiconsIcon icon={tool.icon} />
-                  {tool.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+          <HugeiconsIcon icon={ArrowUp02Icon} />
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
   )
 }
 
@@ -231,19 +363,17 @@ export function ImageEditorDock({
   onAddImages,
 }: ImageEditorDockProps) {
   const [isMoreOpen, setIsMoreOpen] = useState(false)
+  const [isAiOpen, setIsAiOpen] = useState(false)
+  const [aiDraft, setAiDraft] = useState('')
+  const [isAiHovered, setIsAiHovered] = useState(false)
+  const [isAiFocused, setIsAiFocused] = useState(false)
+  const aiButtonRef = useRef<HTMLButtonElement>(null)
+  const aiInputRef = useRef<HTMLInputElement>(null)
+  const restoreAiFocus = useRef(false)
+  const reduceMotion = useReducedMotion()
   const activeToolId = useValue(
     'image editor active tool',
     () => editor?.getCurrentToolId() ?? 'select',
-    [editor],
-  )
-  const isToolLockable = useValue(
-    'image editor active tool is lockable',
-    () => editor?.getCurrentTool().isLockable ?? false,
-    [editor],
-  )
-  const isToolLocked = useValue(
-    'image editor tool lock',
-    () => editor?.getInstanceState().isToolLocked ?? false,
     [editor],
   )
   const activeGeoId = useValue(
@@ -252,7 +382,9 @@ export function ImageEditorDock({
     [editor],
   )
   const activeGeo =
-    geoTools.find((tool) => tool.id === activeGeoId) ?? geoTools[0]
+    quickGeoTools.find((tool) => tool.id === activeGeoId) ??
+    geoTools.find((tool) => tool.id === activeGeoId) ??
+    geoTools[0]
   const isSecondaryToolActive = secondaryTools.some(
     (tool) => tool.id === activeToolId,
   )
@@ -287,119 +419,154 @@ export function ImageEditorDock({
   )
 
   return (
-    <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-4 xl:right-88">
-      <div
-        className="pointer-events-auto w-fit max-w-full rounded-2xl border border-border bg-card/95 shadow-2xl shadow-foreground/10 backdrop-blur-xl"
+    <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-60 xl:right-88">
+      <motion.div
+        className={cn(
+          editorCapsuleClassName,
+          'relative w-120 max-w-full',
+          isAiOpen && 'w-lg',
+        )}
+        layout
         onPointerDown={(event) => event.stopPropagation()}
+        transition={
+          reduceMotion
+            ? { duration: 0 }
+            : { layout: { type: 'spring', bounce: 0, duration: 0.32 } }
+        }
       >
-        <div
-          aria-label="画布工具"
-          className="flex min-w-0 items-center gap-0.5 overflow-x-auto p-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
-          role="toolbar"
-        >
-          {primaryTools.map((tool) => (
-            <DockToolButton
-              activeToolId={activeToolId}
-              disabled={!editor}
-              key={tool.id}
-              onActivate={activateTool}
-              tool={tool}
-            />
-          ))}
-          <ShapeToolPicker
-            activeGeo={activeGeo}
-            activeToolId={activeToolId}
-            disabled={!editor}
-            onActivate={activateTool}
-          />
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  aria-label="素材"
-                  disabled={!editor || isImporting}
-                  onClick={onAddImages}
-                  size="icon-lg"
-                  variant="ghost"
-                />
-              }
-            >
-              <HugeiconsIcon icon={ImageAdd01Icon} />
-            </TooltipTrigger>
-            <TooltipContent>{isImporting ? '正在导入' : '素材'}</TooltipContent>
-          </Tooltip>
-          <DropdownMenu onOpenChange={setIsMoreOpen} open={isMoreOpen}>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  aria-label="更多工具"
-                  aria-pressed={isSecondaryToolActive}
-                  disabled={!editor}
-                  size="icon-lg"
-                  variant={isSecondaryToolActive ? 'secondary' : 'ghost'}
-                />
-              }
-            >
-              <HugeiconsIcon icon={MoreHorizontalIcon} />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" sideOffset={8}>
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>更多工具</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  onValueChange={(toolId) => {
-                    setIsMoreOpen(false)
-                    activateTool(toolId)
-                  }}
-                  value={activeToolId}
-                >
-                  {secondaryTools.map((tool) => (
-                    <DropdownMenuRadioItem key={tool.id} value={tool.id}>
-                      <HugeiconsIcon icon={tool.icon} />
-                      {getToolLabel(tool)}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Separator
-            className="mx-1 h-6 self-center! w-0.5! rounded-full"
-            orientation="vertical"
-          />
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  aria-label={
-                    isToolLocked ? '关闭连续使用工具 (Q)' : '连续使用工具 (Q)'
-                  }
-                  aria-pressed={isToolLockable && isToolLocked}
-                  disabled={!editor || !isToolLockable}
-                  onClick={() => {
-                    editor?.updateInstanceState({
-                      isToolLocked: !isToolLocked,
-                    })
-                    focusEditor()
-                  }}
-                  size="icon-lg"
-                  variant={isToolLockable && isToolLocked ? 'default' : 'ghost'}
-                />
-              }
-            >
-              <HugeiconsIcon
-                icon={
-                  isToolLockable && isToolLocked
-                    ? LockKeyholeIcon
-                    : LockKeyholeOpenIcon
-                }
+        <AnimatePresence initial={false} mode="wait">
+          {isAiOpen ? (
+            <DockPanel key="ai-input">
+              <DockAiInput
+                draft={aiDraft}
+                inputRef={aiInputRef}
+                onDraftChange={setAiDraft}
+                onClose={() => {
+                  restoreAiFocus.current = true
+                  setIsAiOpen(false)
+                }}
               />
-            </TooltipTrigger>
-            <TooltipContent>
-              {isToolLocked ? '关闭连续使用工具 (Q)' : '连续使用工具 (Q)'}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
+            </DockPanel>
+          ) : (
+            <DockPanel
+              key="tools"
+              onEntered={() => {
+                if (!restoreAiFocus.current) return
+                restoreAiFocus.current = false
+                aiButtonRef.current?.focus()
+              }}
+            >
+              <div
+                aria-label="画布工具"
+                className="flex min-w-0 items-center justify-between gap-0.5 overflow-x-auto p-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
+                role="toolbar"
+              >
+                {primaryTools.map((tool) => (
+                  <DockToolButton
+                    activeToolId={activeToolId}
+                    disabled={!editor}
+                    key={tool.id}
+                    onActivate={activateTool}
+                    tool={tool}
+                  />
+                ))}
+                <ShapeToolPicker
+                  activeGeo={activeGeo}
+                  activeToolId={activeToolId}
+                  disabled={!editor || isAiOpen}
+                  onActivate={activateTool}
+                />
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        aria-label="素材"
+                        disabled={!editor || isImporting}
+                        onClick={onAddImages}
+                        size="icon-lg"
+                        variant="ghost"
+                      />
+                    }
+                  >
+                    <HugeiconsIcon icon={ImageAdd01Icon} />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isImporting ? '正在导入' : '素材'}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        aria-label="AI 编辑"
+                        disabled={!editor}
+                        onBlur={() => setIsAiFocused(false)}
+                        onClick={() => {
+                          editor?.complete()
+                          editor?.blur()
+                          setIsMoreOpen(false)
+                          setIsAiHovered(false)
+                          setIsAiFocused(false)
+                          setIsAiOpen(true)
+                        }}
+                        onFocus={(event) =>
+                          setIsAiFocused(
+                            event.currentTarget.matches(':focus-visible'),
+                          )
+                        }
+                        onMouseEnter={() => setIsAiHovered(true)}
+                        onMouseLeave={() => setIsAiHovered(false)}
+                        ref={aiButtonRef}
+                        size="icon-lg"
+                        variant="ghost"
+                      />
+                    }
+                  >
+                    <AiToolIcon
+                      active={!isAiOpen && (isAiHovered || isAiFocused)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>AI 编辑</TooltipContent>
+                </Tooltip>
+                <DropdownMenu onOpenChange={setIsMoreOpen} open={isMoreOpen}>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        aria-label="更多工具"
+                        aria-pressed={isSecondaryToolActive}
+                        disabled={!editor}
+                        size="icon-lg"
+                        variant={isSecondaryToolActive ? 'secondary' : 'ghost'}
+                      />
+                    }
+                  >
+                    <HugeiconsIcon icon={MoreHorizontalIcon} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" side="top" sideOffset={8}>
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>更多工具</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        onValueChange={(toolId) => {
+                          setIsMoreOpen(false)
+                          activateTool(toolId)
+                        }}
+                        value={activeToolId}
+                      >
+                        {secondaryTools.map((tool) => (
+                          <DropdownMenuRadioItem key={tool.id} value={tool.id}>
+                            <HugeiconsIcon icon={tool.icon} />
+                            {getToolLabel(tool)}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </DockPanel>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   )
 }

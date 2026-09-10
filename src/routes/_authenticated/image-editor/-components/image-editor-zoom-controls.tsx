@@ -12,6 +12,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+
+import { editorCapsuleClassName } from './editor-capsule'
 
 export function ImageEditorZoomControls({ editor }: { editor: Editor | null }) {
   const zoom = useValue(
@@ -24,7 +27,9 @@ export function ImageEditorZoomControls({ editor }: { editor: Editor | null }) {
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 z-20 hidden sm:block">
-      <div className="pointer-events-auto flex h-10 items-center gap-0.5 rounded-xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+      <div
+        className={cn(editorCapsuleClassName, 'flex items-center gap-0.5 p-1')}
+      >
         <Tooltip>
           <TooltipTrigger
             render={
@@ -35,7 +40,7 @@ export function ImageEditorZoomControls({ editor }: { editor: Editor | null }) {
                   editor?.zoomOut(undefined, { animation: { duration: 120 } })
                   focusEditor()
                 }}
-                size="icon-sm"
+                size="icon-lg"
                 variant="ghost"
               />
             }
@@ -49,7 +54,7 @@ export function ImageEditorZoomControls({ editor }: { editor: Editor | null }) {
             render={
               <Button
                 aria-label={`当前缩放 ${zoom}%，点击恢复 100%`}
-                className="w-14 rounded-lg px-1 text-xs tabular-nums"
+                className="w-14 px-1 tabular-nums"
                 disabled={!editor}
                 onClick={() => {
                   editor?.resetZoom(undefined, {
@@ -57,7 +62,7 @@ export function ImageEditorZoomControls({ editor }: { editor: Editor | null }) {
                   })
                   focusEditor()
                 }}
-                size="sm"
+                size="lg"
                 variant="ghost"
               />
             }
@@ -76,7 +81,7 @@ export function ImageEditorZoomControls({ editor }: { editor: Editor | null }) {
                   editor?.zoomIn(undefined, { animation: { duration: 120 } })
                   focusEditor()
                 }}
-                size="icon-sm"
+                size="icon-lg"
                 variant="ghost"
               />
             }
@@ -95,7 +100,7 @@ export function ImageEditorZoomControls({ editor }: { editor: Editor | null }) {
                   editor?.zoomToFit({ animation: { duration: 220 } })
                   focusEditor()
                 }}
-                size="icon-sm"
+                size="icon-lg"
                 variant="ghost"
               />
             }
