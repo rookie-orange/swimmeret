@@ -121,7 +121,7 @@ function ImageToolsControl({
       >
         <HugeiconsIcon icon={SlidersHorizontalIcon} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" side="top" sideOffset={10}>
+      <DropdownMenuContent sideOffset={10}>
         <DropdownMenuGroup>
           <DropdownMenuLabel>图片工具</DropdownMenuLabel>
           <DropdownMenuItem onClick={onOpenProperties}>
@@ -326,8 +326,7 @@ export function ElementToolbar() {
             placement.shapeIds.length > 1 ? '多选元素操作' : '元素操作'
           }
           className={cn(
-            'grid h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow-xl shadow-foreground/10',
-            placement.isWide ? 'w-72 grid-cols-7' : 'w-48 grid-cols-5',
+            'flex h-10 gap-1 rounded-xl border border-border bg-card p-1 shadow shadow-foreground/10',
           )}
           onPointerDown={(event) => event.stopPropagation()}
           role="toolbar"

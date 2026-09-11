@@ -90,7 +90,7 @@ export function ElementMoreMenu({
       >
         <HugeiconsIcon icon={MoreHorizontalIcon} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60" sideOffset={8}>
+      <DropdownMenuContent sideOffset={8}>
         <DropdownMenuGroup>
           <DropdownMenuLabel>
             {selection.count > 1
