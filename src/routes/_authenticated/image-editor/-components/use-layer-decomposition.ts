@@ -19,7 +19,7 @@ import {
   readDecompositionAsset,
   stageLayerSource,
   type LayerDecompositionManifest,
-} from '@/lib/layer-decomposition'
+} from '@/api/layer-decomposition'
 
 import {
   calculateLayerExportScale,

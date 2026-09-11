@@ -37,7 +37,7 @@ import {
   type LayerDecompositionProgress,
   type LayerManifestAsset,
   type LayerResolution,
-} from '@/lib/layer-decomposition'
+} from '@/api/layer-decomposition'
 import { cn } from '@/lib/utils'
 
 const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg'])

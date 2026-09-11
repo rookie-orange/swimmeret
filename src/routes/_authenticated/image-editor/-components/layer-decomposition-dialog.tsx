@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
-import type { LayerResolution } from '@/lib/layer-decomposition'
+import type { LayerResolution } from '@/api/layer-decomposition'
 
 const RESOLUTION_OPTIONS: Array<{
   label: string

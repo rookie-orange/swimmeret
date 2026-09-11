@@ -1,7 +1,14 @@
+mod clients;
+mod commands;
 mod decomposition;
+mod diagnostics;
+mod error;
+#[path = "image-generation.rs"]
+mod image_generation;
 mod projects;
+mod services;
 
-use decomposition::DecompositionState;
+use services::{decomposition::DecompositionService, image_generation::ImageGenerationService};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -62,17 +69,19 @@ pub fn run() {
         .setup(|app| {
             let cache_root = app.path().app_cache_dir()?.join("layer-decomposition");
             tracing::debug!(cache_root = %cache_root.display(), "initializing layer decomposition state");
-            app.manage(DecompositionState::new(cache_root)?);
+            app.manage(DecompositionService::new(cache_root)?);
+            app.manage(ImageGenerationService::new()?);
             app.manage(projects::ProjectState::new(app.path().app_data_dir()?.join("projects"))?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            decomposition::log_image_diagnostic,
-            decomposition::stage_layer_source,
-            decomposition::discard_layer_source,
-            decomposition::decompose_image,
-            decomposition::read_decomposition_asset,
-            decomposition::cleanup_decomposition_job,
+            commands::decomposition::log_image_diagnostic,
+            commands::decomposition::stage_layer_source,
+            commands::decomposition::discard_layer_source,
+            commands::decomposition::decompose_image,
+            commands::decomposition::read_decomposition_asset,
+            commands::decomposition::cleanup_decomposition_job,
+            commands::image_generation::generate_image,
             projects::list_canvas_projects,
             projects::create_canvas_project,
             projects::load_canvas_project,

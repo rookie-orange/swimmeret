@@ -64,6 +64,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
 import {
   Tooltip,
   TooltipContent,
@@ -300,54 +301,78 @@ function DockAiInput({
   inputRef,
   onDraftChange,
   onClose,
+  onSubmit,
+  isSubmitting,
 }: {
   draft: string
   inputRef: RefObject<HTMLInputElement | null>
   onDraftChange: (draft: string) => void
   onClose: () => void
+  onSubmit: (prompt: string) => Promise<void>
+  isSubmitting: boolean
 }) {
   return (
-    <InputGroup
-      aria-label="AI 编辑"
-      className="h-12 rounded-2xl border-0 bg-transparent"
-      onKeyDown={(event) => {
-        event.stopPropagation()
-        if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
-          event.preventDefault()
-          onClose()
-        }
+    <form
+      aria-label="AI 生图"
+      aria-busy={isSubmitting}
+      className="w-full"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const normalized = draft.trim()
+        if (!normalized || isSubmitting) return
+        void onSubmit(normalized)
       }}
-      onKeyUp={(event) => event.stopPropagation()}
     >
-      <InputGroupInput
-        aria-label="AI 编辑指令"
-        autoFocus
-        onChange={(event) => onDraftChange(event.target.value)}
-        placeholder="描述你想对图像做的修改…"
-        ref={inputRef}
-        value={draft}
-      />
-      <InputGroupAddon align="inline-start">
-        <InputGroupButton
-          aria-label="关闭 AI 输入"
-          onClick={onClose}
-          size="icon-sm"
-        >
-          <HugeiconsIcon icon={Cancel01Icon} />
-        </InputGroupButton>
-      </InputGroupAddon>
-      <InputGroupAddon align="inline-end">
-        <InputGroupButton
-          aria-label="发送指令"
-          disabled
-          size="icon-sm"
-          title="AI 编辑即将开放"
-          variant="default"
-        >
-          <HugeiconsIcon icon={ArrowUp02Icon} />
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
+      <InputGroup
+        className="h-12 rounded-2xl border-0 bg-transparent"
+        onKeyDown={(event) => {
+          event.stopPropagation()
+          const isComposing =
+            event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229
+          if (event.key === 'Enter' && isComposing) event.preventDefault()
+          if (event.key === 'Escape' && !isComposing && !isSubmitting) {
+            event.preventDefault()
+            onClose()
+          }
+        }}
+        onKeyUp={(event) => event.stopPropagation()}
+      >
+        <InputGroupInput
+          aria-label="图片描述"
+          autoFocus
+          disabled={isSubmitting}
+          onChange={(event) => onDraftChange(event.target.value)}
+          placeholder="描述你想生成的图片…"
+          ref={inputRef}
+          value={draft}
+        />
+        <InputGroupAddon align="inline-start">
+          <InputGroupButton
+            aria-label="关闭 AI 输入"
+            disabled={isSubmitting}
+            onClick={onClose}
+            size="icon-sm"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} />
+          </InputGroupButton>
+        </InputGroupAddon>
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            aria-label="生成图片"
+            disabled={!draft.trim() || isSubmitting}
+            size="icon-sm"
+            type="submit"
+            variant="default"
+          >
+            {isSubmitting ? (
+              <Spinner />
+            ) : (
+              <HugeiconsIcon icon={ArrowUp02Icon} />
+            )}
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
+    </form>
   )
 }
 
@@ -355,12 +380,16 @@ interface ImageEditorDockProps {
   editor: Editor | null
   isImporting: boolean
   onAddImages: () => void
+  onGenerateImage: (prompt: string) => Promise<boolean>
+  isGeneratingImage: boolean
 }
 
 export function ImageEditorDock({
   editor,
   isImporting,
   onAddImages,
+  onGenerateImage,
+  isGeneratingImage,
 }: ImageEditorDockProps) {
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const [isAiOpen, setIsAiOpen] = useState(false)
@@ -441,6 +470,10 @@ export function ImageEditorDock({
                 draft={aiDraft}
                 inputRef={aiInputRef}
                 onDraftChange={setAiDraft}
+                onSubmit={async (prompt) => {
+                  if (await onGenerateImage(prompt)) setAiDraft('')
+                }}
+                isSubmitting={isGeneratingImage}
                 onClose={() => {
                   restoreAiFocus.current = true
                   setIsAiOpen(false)
@@ -498,7 +531,7 @@ export function ImageEditorDock({
                   <TooltipTrigger
                     render={
                       <Button
-                        aria-label="AI 编辑"
+                        aria-label="AI 生图"
                         disabled={!editor}
                         onBlur={() => setIsAiFocused(false)}
                         onClick={() => {
@@ -526,7 +559,7 @@ export function ImageEditorDock({
                       active={!isAiOpen && (isAiHovered || isAiFocused)}
                     />
                   </TooltipTrigger>
-                  <TooltipContent>AI 编辑</TooltipContent>
+                  <TooltipContent>AI 生图</TooltipContent>
                 </Tooltip>
                 <DropdownMenu onOpenChange={setIsMoreOpen} open={isMoreOpen}>
                   <DropdownMenuTrigger

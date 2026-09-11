@@ -1,4 +1,4 @@
-import type { LayerManifestAsset } from '@/lib/layer-decomposition'
+import type { LayerManifestAsset } from '@/api/layer-decomposition'
 
 const MIN_INPUT_PIXELS = 512 * 512
 const MAX_INPUT_PIXELS = 6000 * 6000

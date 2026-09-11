@@ -34,6 +34,7 @@ import { InfiniteCanvas } from './infinite-canvas'
 import { ExportDialog } from './export-dialog'
 import { LayerDecompositionProvider } from './layer-decomposition-provider'
 import { useImageImport } from './use-image-import'
+import { useImageGeneration } from './use-image-generation'
 import { useLayerDecomposition } from './use-layer-decomposition'
 import { useProjectSession } from './use-project-session'
 
@@ -242,10 +243,14 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
   >('layers')
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
     useImageImport(editor)
+  const imageGeneration = useImageGeneration(editor)
   const layerDecomposition = useLayerDecomposition(editor)
   useEffect(() => {
-    busy.current = isImporting || layerDecomposition.isPending
-  }, [isImporting, layerDecomposition.isPending])
+    busy.current =
+      isImporting ||
+      layerDecomposition.isPending ||
+      imageGeneration.isGenerating
+  }, [imageGeneration.isGenerating, isImporting, layerDecomposition.isPending])
   const layerDecompositionContext = useMemo(
     () => ({
       isOpen: layerDecomposition.isOpen,
@@ -343,6 +348,23 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
                   {layerDecomposition.status}
                 </p>
               ) : null}
+              {imageGeneration.error ? (
+                <p
+                  className="line-clamp-2 text-xs text-destructive"
+                  role="alert"
+                >
+                  {imageGeneration.error}
+                </p>
+              ) : null}
+              {imageGeneration.isGenerating ? (
+                <p
+                  aria-live="polite"
+                  className="truncate text-xs text-muted-foreground"
+                  role="status"
+                >
+                  正在生成图片…
+                </p>
+              ) : null}
             </div>
 
             <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
@@ -383,8 +405,10 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
           <ImageEditorZoomControls editor={editor} />
           <ImageEditorDock
             editor={editor}
+            isGeneratingImage={imageGeneration.isGenerating}
             isImporting={isImporting}
             onAddImages={openFileDialog}
+            onGenerateImage={imageGeneration.generate}
           />
         </section>
         <ExportDialog
