@@ -14,7 +14,7 @@ import {
   ArrowUpRight03Icon,
   Cancel01Icon,
   CloudIcon,
-  Cursor01Icon,
+  MousePointer01Icon,
   DiamondIcon,
   EllipseIcon,
   EraserIcon,
@@ -24,8 +24,7 @@ import {
   HexagonIcon,
   HighlighterIcon,
   ImageAdd01Icon,
-  LineIcon,
-  MoreHorizontalIcon,
+  LinerIcon,
   NoteIcon,
   OctagonIcon,
   ParallelogramIcon,
@@ -46,18 +45,14 @@ import {
   useIsPresent,
   useReducedMotion,
 } from 'motion/react'
-import { GeoShapeGeoStyle, type Editor, useValue } from 'tldraw'
+import {
+  DefaultColorStyle,
+  GeoShapeGeoStyle,
+  type Editor,
+  useValue,
+} from 'tldraw'
 
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   InputGroup,
   InputGroupAddon,
@@ -71,6 +66,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 
 import { AiToolIcon } from './ai-tool-icon'
 import { editorCapsuleClassName } from './editor-capsule'
@@ -83,17 +83,23 @@ interface ToolDefinition {
 }
 
 const primaryTools = [
-  { id: 'select', label: '选择', icon: Cursor01Icon, shortcut: 'V' },
+  { id: 'select', label: '选择', icon: MousePointer01Icon, shortcut: 'V' },
   { id: 'hand', label: '抓手', icon: HandIcon, shortcut: 'H' },
   { id: 'draw', label: '画笔', icon: PencilEdit01Icon, shortcut: 'D' },
   { id: 'eraser', label: '橡皮擦', icon: EraserIcon, shortcut: 'E' },
-  { id: 'arrow', label: '箭头', icon: ArrowUpRight03Icon, shortcut: 'A' },
   { id: 'text', label: '文字', icon: TextIcon, shortcut: 'T' },
   { id: 'note', label: '便签', icon: NoteIcon, shortcut: 'N' },
 ] as const satisfies readonly ToolDefinition[]
 
+const arrowTool = {
+  id: 'arrow',
+  label: '箭头',
+  icon: ArrowUpRight03Icon,
+  shortcut: 'A',
+} as const
+
 const secondaryTools = [
-  { id: 'line', label: '直线', icon: LineIcon, shortcut: 'L' },
+  { id: 'line', label: '直线', icon: LinerIcon, shortcut: 'L' },
   { id: 'highlight', label: '高亮笔', icon: HighlighterIcon },
   { id: 'frame', label: '画框', icon: FrameIcon, shortcut: 'F' },
 ] as const satisfies readonly ToolDefinition[]
@@ -127,10 +133,172 @@ const geoTools = [
 
 const quickGeoTools = [
   geoTools[0],
-  geoTools[2],
   { ...geoTools[1], label: '圆形' },
-  geoTools[3],
+  geoTools[2],
+  secondaryTools[0],
+  arrowTool,
+  { ...arrowTool, id: 'arrow-elbow', label: '折线箭头' },
 ] as const satisfies readonly ToolDefinition[]
+
+const drawQuickTools = [primaryTools[2], secondaryTools[1]] as const
+
+const dockColors = [
+  ['black', '!bg-canvas-swatch-black'],
+  ['blue', '!bg-canvas-swatch-blue'],
+  ['red', '!bg-canvas-swatch-red'],
+  ['yellow', '!bg-canvas-swatch-yellow'],
+  ['green', '!bg-canvas-swatch-green'],
+  ['light-blue', '!bg-canvas-swatch-light-blue'],
+  ['violet', '!bg-canvas-swatch-violet'],
+  ['white', '!bg-canvas-swatch-white'],
+] as const
+
+function HoverToolPicker({
+  tool,
+  options,
+  activeToolId,
+  disabled,
+  onActivate,
+}: {
+  tool: ToolDefinition
+  options: readonly ToolDefinition[]
+  activeToolId: string
+  disabled: boolean
+  onActivate: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const timer = useRef<number | null>(null)
+  const enter = () => {
+    if (timer.current) window.clearTimeout(timer.current)
+    setOpen(true)
+  }
+  const leave = () => {
+    timer.current = window.setTimeout(() => setOpen(false), 180)
+  }
+  const active = activeToolId === tool.id
+  return (
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            aria-label={getToolLabel(tool)}
+            aria-pressed={active}
+            disabled={disabled}
+            size="icon-lg"
+            variant={active ? 'default' : 'ghost'}
+            onMouseEnter={enter}
+            onMouseLeave={leave}
+            onClick={() => onActivate(tool.id)}
+          />
+        }
+      >
+        <HugeiconsIcon icon={tool.icon} />
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-auto p-2"
+        side="top"
+        sideOffset={4}
+        onMouseEnter={enter}
+        onMouseLeave={leave}
+      >
+        <div className="flex gap-1">
+          {options.map((item) => (
+            <Button
+              key={item.id}
+              aria-label={item.label}
+              size="icon"
+              variant={activeToolId === item.id ? 'secondary' : 'ghost'}
+              onClick={() => {
+                setOpen(false)
+                onActivate(item.id)
+              }}
+            >
+              <HugeiconsIcon icon={item.icon} />
+            </Button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function NoteToolPicker({
+  activeToolId,
+  disabled,
+  onActivate,
+  onColor,
+  activeColor,
+}: {
+  activeToolId: string
+  disabled: boolean
+  onActivate: (id: string) => void
+  onColor: (color: string) => void
+  activeColor: string
+}) {
+  const [open, setOpen] = useState(false)
+  const timer = useRef<number | null>(null)
+  const active = activeToolId === 'note'
+  return (
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            aria-label="便签"
+            aria-pressed={active}
+            disabled={disabled}
+            size="icon-lg"
+            variant={active ? 'default' : 'ghost'}
+            onMouseEnter={() => {
+              if (timer.current) window.clearTimeout(timer.current)
+              setOpen(true)
+            }}
+            onMouseLeave={() => {
+              timer.current = window.setTimeout(() => setOpen(false), 180)
+            }}
+            onClick={() => onActivate('note')}
+          />
+        }
+      >
+        <HugeiconsIcon icon={NoteIcon} />
+      </PopoverTrigger>
+      <PopoverContent
+        align="center"
+        className="w-auto p-2"
+        side="top"
+        sideOffset={4}
+        onMouseEnter={() => {
+          if (timer.current) window.clearTimeout(timer.current)
+          setOpen(true)
+        }}
+        onMouseLeave={() => {
+          timer.current = window.setTimeout(() => setOpen(false), 180)
+        }}
+      >
+        <div className="grid grid-cols-8 gap-1">
+          {dockColors.map(([color, colorClass]) => (
+            <Button
+              key={color}
+              aria-label={`便签颜色 ${color}`}
+              type="button"
+              size="icon"
+              variant="ghost"
+              className={cn(
+                'size-7 rounded-md border border-border p-0 !text-transparent hover:!brightness-100 focus:!brightness-100',
+                colorClass,
+                activeColor === color && 'ring-2 ring-ring ring-offset-1',
+              )}
+              onClick={() => {
+                setOpen(false)
+                onColor(color)
+                onActivate('note')
+              }}
+            />
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 function getToolLabel(tool: ToolDefinition) {
   return tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label
@@ -181,75 +349,58 @@ function ShapeToolPicker({
   disabled: boolean
   onActivate: (toolId: string) => void
 }) {
-  const isActive = activeToolId === 'geo'
-  const [isOpen, setIsOpen] = useState(false)
-
+  const [open, setOpen] = useState(false)
+  const timer = useRef<number | null>(null)
+  const enter = () => {
+    if (timer.current) window.clearTimeout(timer.current)
+    setOpen(true)
+  }
+  const leave = () => {
+    timer.current = window.setTimeout(() => setOpen(false), 180)
+  }
   return (
-    <DropdownMenu
-      modal={false}
-      onOpenChange={setIsOpen}
-      open={isOpen && !disabled}
-    >
-      <DropdownMenuTrigger
-        closeDelay={150}
-        delay={180}
-        openOnHover
-        onClick={(event) => {
-          // Keep keyboard and touch activation available for the menu.
-          if (
-            event.detail === 0 ||
-            (event.nativeEvent instanceof PointerEvent &&
-              event.nativeEvent.pointerType === 'touch')
-          )
-            return
-
-          event.preventBaseUIHandler()
-          setIsOpen(false)
-          onActivate(activeGeo.id)
-        }}
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <PopoverTrigger
         render={
           <Button
             aria-label={`形状：${getToolLabel(activeGeo)}`}
-            aria-pressed={isActive}
+            aria-pressed={activeToolId === 'geo'}
             disabled={disabled}
             size="icon-lg"
-            variant={isActive ? 'default' : 'ghost'}
+            variant={activeToolId === 'geo' ? 'default' : 'ghost'}
+            onMouseEnter={enter}
+            onMouseLeave={leave}
+            onClick={() => onActivate(activeGeo.id)}
           />
         }
       >
         <HugeiconsIcon icon={activeGeo.icon} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="center"
-        aria-label="快捷形状"
-        className="w-56"
-        finalFocus={(interactionType) => interactionType === 'keyboard'}
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-auto p-2"
         side="top"
-        sideOffset={8}
+        sideOffset={4}
+        onMouseEnter={enter}
+        onMouseLeave={leave}
       >
-        <DropdownMenuGroup>
-          <DropdownMenuRadioGroup
-            className="grid grid-cols-4 gap-0.5"
-            value={activeGeo.id}
-          >
-            {quickGeoTools.map((tool) => (
-              <DropdownMenuRadioItem
-                className="flex-col gap-2 px-2 py-3 text-xs data-checked:bg-primary data-checked:text-primary-foreground [&>span]:hidden"
-                key={tool.id}
-                onClick={() => {
-                  setIsOpen(false)
-                  onActivate(tool.id)
-                }}
-                value={tool.id}
-              >
-                <HugeiconsIcon icon={tool.icon} />
-                {tool.label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <div className="grid grid-cols-6 gap-1">
+          {quickGeoTools.map((tool) => (
+            <Button
+              key={tool.id}
+              aria-label={tool.label}
+              size="icon"
+              variant={activeGeo.id === tool.id ? 'secondary' : 'ghost'}
+              onClick={() => {
+                setOpen(false)
+                onActivate(tool.id)
+              }}
+            >
+              <HugeiconsIcon icon={tool.icon} />
+            </Button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -391,7 +542,6 @@ export function ImageEditorDock({
   onGenerateImage,
   isGeneratingImage,
 }: ImageEditorDockProps) {
-  const [isMoreOpen, setIsMoreOpen] = useState(false)
   const [isAiOpen, setIsAiOpen] = useState(false)
   const [aiDraft, setAiDraft] = useState('')
   const [isAiHovered, setIsAiHovered] = useState(false)
@@ -410,13 +560,15 @@ export function ImageEditorDock({
     () => editor?.getStyleForNextShape(GeoShapeGeoStyle) ?? 'rectangle',
     [editor],
   )
+  const activeColor = useValue(
+    'image editor active color',
+    () => editor?.getStyleForNextShape(DefaultColorStyle) ?? 'black',
+    [editor],
+  )
   const activeGeo =
     quickGeoTools.find((tool) => tool.id === activeGeoId) ??
     geoTools.find((tool) => tool.id === activeGeoId) ??
     geoTools[0]
-  const isSecondaryToolActive = secondaryTools.some(
-    (tool) => tool.id === activeToolId,
-  )
 
   const focusEditor = useCallback(() => {
     if (editor) requestAnimationFrame(() => editor.focus())
@@ -424,6 +576,8 @@ export function ImageEditorDock({
   const activateTool = useCallback(
     (toolId: string) => {
       if (!editor) return
+
+      if (toolId === 'arrow-elbow') toolId = 'arrow'
 
       const geoTool = geoTools.find((tool) => tool.id === toolId)
       editor.run(() => {
@@ -445,6 +599,13 @@ export function ImageEditorDock({
       focusEditor()
     },
     [editor, focusEditor],
+  )
+  const activateNoteColor = useCallback(
+    (color: string) => {
+      if (!editor) return
+      editor.run(() => editor.setStyleForNextShapes(DefaultColorStyle, color))
+    },
+    [editor],
   )
 
   return (
@@ -491,23 +652,49 @@ export function ImageEditorDock({
             >
               <div
                 aria-label="画布工具"
-                className="flex min-w-0 items-center justify-between gap-0.5 overflow-x-auto p-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
+                className="flex min-w-0 items-center justify-between gap-0 overflow-x-auto p-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
                 role="toolbar"
               >
-                {primaryTools.map((tool) => (
-                  <DockToolButton
-                    activeToolId={activeToolId}
-                    disabled={!editor}
-                    key={tool.id}
-                    onActivate={activateTool}
-                    tool={tool}
-                  />
-                ))}
+                {primaryTools.map((tool) =>
+                  tool.id === 'draw' ? (
+                    <HoverToolPicker
+                      key={tool.id}
+                      tool={tool}
+                      options={drawQuickTools}
+                      activeToolId={activeToolId}
+                      disabled={!editor}
+                      onActivate={activateTool}
+                    />
+                  ) : tool.id === 'note' ? (
+                    <NoteToolPicker
+                      key={tool.id}
+                      activeToolId={activeToolId}
+                      disabled={!editor}
+                      onActivate={activateTool}
+                      onColor={activateNoteColor}
+                      activeColor={activeColor}
+                    />
+                  ) : (
+                    <DockToolButton
+                      key={tool.id}
+                      activeToolId={activeToolId}
+                      disabled={!editor}
+                      onActivate={activateTool}
+                      tool={tool}
+                    />
+                  ),
+                )}
                 <ShapeToolPicker
                   activeGeo={activeGeo}
                   activeToolId={activeToolId}
                   disabled={!editor || isAiOpen}
                   onActivate={activateTool}
+                />
+                <DockToolButton
+                  activeToolId={activeToolId}
+                  disabled={!editor}
+                  onActivate={activateTool}
+                  tool={secondaryTools[2]}
                 />
                 <Tooltip>
                   <TooltipTrigger
@@ -537,7 +724,6 @@ export function ImageEditorDock({
                         onClick={() => {
                           editor?.complete()
                           editor?.blur()
-                          setIsMoreOpen(false)
                           setIsAiHovered(false)
                           setIsAiFocused(false)
                           setIsAiOpen(true)
@@ -561,40 +747,6 @@ export function ImageEditorDock({
                   </TooltipTrigger>
                   <TooltipContent>AI 生图</TooltipContent>
                 </Tooltip>
-                <DropdownMenu onOpenChange={setIsMoreOpen} open={isMoreOpen}>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        aria-label="更多工具"
-                        aria-pressed={isSecondaryToolActive}
-                        disabled={!editor}
-                        size="icon-lg"
-                        variant={isSecondaryToolActive ? 'secondary' : 'ghost'}
-                      />
-                    }
-                  >
-                    <HugeiconsIcon icon={MoreHorizontalIcon} />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" sideOffset={8}>
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel>更多工具</DropdownMenuLabel>
-                      <DropdownMenuRadioGroup
-                        onValueChange={(toolId) => {
-                          setIsMoreOpen(false)
-                          activateTool(toolId)
-                        }}
-                        value={activeToolId}
-                      >
-                        {secondaryTools.map((tool) => (
-                          <DropdownMenuRadioItem key={tool.id} value={tool.id}>
-                            <HugeiconsIcon icon={tool.icon} />
-                            {getToolLabel(tool)}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </DockPanel>
           )}
