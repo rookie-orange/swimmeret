@@ -33,9 +33,9 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-import { useLayerDecompositionContext } from './layer-decomposition-state'
+import { useLayerDecompositionContext } from '../-context/layer-decomposition-state'
 import { ImageEditorProperties } from './image-editor-properties'
-import { useImageEditorInspector } from './image-editor-inspector-state'
+import { useImageEditorInspector } from '../-context/image-editor-inspector-state'
 
 interface ImageEditorLayersProps {
   editor: Editor | null

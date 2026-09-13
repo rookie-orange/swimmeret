@@ -27,17 +27,17 @@ import {
 } from '@/lib/canvas-background'
 
 import { ImageEditorDock } from './image-editor-dock'
-import { ImageEditorInspectorProvider } from './image-editor-inspector-state'
+import { ImageEditorInspectorProvider } from '../-context/image-editor-inspector-state'
 import { ImageEditorLayers } from './image-editor-layers'
 import { ImageEditorPageMenu } from './image-editor-page-menu'
 import { ImageEditorZoomControls } from './image-editor-zoom-controls'
 import { InfiniteCanvas } from './infinite-canvas'
 import { ExportDialog } from './export-dialog'
-import { LayerDecompositionProvider } from './layer-decomposition-provider'
-import { useImageImport } from './use-image-import'
-import { useImageGeneration } from './use-image-generation'
-import { useLayerDecomposition } from './use-layer-decomposition'
-import { useProjectSession } from './use-project-session'
+import { LayerDecompositionProvider } from '../-context/layer-decomposition-provider'
+import { useImageImport } from '../-hooks/use-image-import'
+import { useImageGeneration } from '../-hooks/use-image-generation'
+import { useLayerDecomposition } from '../-hooks/use-layer-decomposition'
+import { useProjectSession } from '../-hooks/use-project-session'
 
 function HistoryControls({ editor }: { editor: Editor | null }) {
   const canUndo = useValue(

@@ -25,7 +25,7 @@ import {
   calculateLayerExportScale,
   getLayerCanvasPlacement,
   type LayerCanvasBounds,
-} from './layer-decomposition-utils'
+} from '../-utils/layer-decomposition-utils'
 import { inspectImageBlob, logImageDiagnostic } from '@/lib/image-diagnostics'
 import {
   getProjectAssets,

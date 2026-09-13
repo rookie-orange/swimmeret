@@ -35,8 +35,8 @@ import {
 import { cn } from '@/lib/utils'
 import { getImageGenerationDraft } from '@/lib/project-image-generation'
 
-import { useImageEditorInspector } from './image-editor-inspector-state'
-import { useLayerDecompositionContext } from './layer-decomposition-state'
+import { useImageEditorInspector } from '../-context/image-editor-inspector-state'
+import { useLayerDecompositionContext } from '../-context/layer-decomposition-state'
 import { ExportDialog } from './export-dialog'
 import { ElementMoreMenu } from './element-more-menu'
 import { SelectionColorPicker } from './selection-color-picker'

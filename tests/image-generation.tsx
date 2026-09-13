@@ -21,9 +21,9 @@ import { assetStorageKey } from '../src/lib/project-storage/types'
 import { projectShapeUtils } from '../src/lib/project-image-shape'
 import { getImageGenerationDraft } from '../src/lib/project-image-generation'
 import { ImageGenerationContext } from '../src/lib/image-generation-context'
-import { ImageEditorDock } from '../src/routes/_authenticated/image-editor/-components/image-editor-dock'
-import { ImageGenerationInput } from '../src/routes/_authenticated/image-editor/-components/image-generation-input'
-import { useImageGeneration } from '../src/routes/_authenticated/image-editor/-components/use-image-generation'
+import { ImageEditorDock } from '../src/routes/image-editor/$id/-components/image-editor-dock'
+import { ImageGenerationInput } from '../src/routes/image-editor/$id/-components/image-generation-input'
+import { useImageGeneration } from '../src/routes/image-editor/$id/-hooks/use-image-generation'
 
 const manual = new URLSearchParams(location.search).has('manual')
 const reportTest = (message: string) => {

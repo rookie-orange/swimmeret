@@ -21,7 +21,7 @@ import {
 import { createStoredImage, getProjectAssets } from '@/lib/local-asset-store'
 import { storageError } from '@/lib/project-storage/types'
 import { InspectorAction, InspectorSection } from './inspector-controls'
-import { useLayerDecompositionContext } from './layer-decomposition-state'
+import { useLayerDecompositionContext } from '../-context/layer-decomposition-state'
 
 const adjustmentsList: { key: keyof ImageAdjustments; label: string }[] = [
   { key: 'brightness', label: '亮度' },

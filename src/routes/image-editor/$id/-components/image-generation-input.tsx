@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import {
-  AiImageIcon,
+  Add01Icon,
   ArrowDown01Icon,
   ArrowUp02Icon,
 } from '@hugeicons/core-free-icons'
@@ -107,28 +107,36 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
           <FieldLabel className="sr-only" htmlFor={inputId}>
             图片描述
           </FieldLabel>
-          <InputGroup>
+          <InputGroup className="rounded-3xl border-border bg-card shadow-sm has-[[data-slot=input-group-control]:focus-visible]:!border-border has-[[data-slot=input-group-control]:focus-visible]:!ring-0">
             <InputGroupTextarea
               id={inputId}
               autoFocus
               aria-invalid={tooLong || undefined}
-              className="min-h-28"
-              placeholder="描述你的灵感，想象每一个细节…"
+              className="min-h-24 px-3 pt-3 text-sm placeholder:text-muted-foreground/60 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0"
+              placeholder="描述你的灵感，支持 @ 上传图片、选择技能以及 Agent"
               value={draft.prompt}
               onChange={(event) => update({ prompt: event.target.value })}
             />
-            <InputGroupAddon align="block-end" className="flex-wrap">
-              <span className="flex items-center gap-1.5 text-xs">
-                <HugeiconsIcon icon={AiImageIcon} />
-                文生图
-              </span>
+            <InputGroupAddon
+              align="block-end"
+              className="flex-wrap px-2 pb-2 pt-1"
+            >
+              <InputGroupButton
+                size="icon-sm"
+                variant="secondary"
+                aria-label="添加内容"
+                className="rounded-full"
+              >
+                <HugeiconsIcon icon={Add01Icon} />
+              </InputGroupButton>
               <Popover>
                 <PopoverTrigger
                   render={
                     <InputGroupButton
                       size="sm"
-                      variant="secondary"
+                      variant="ghost"
                       aria-label="生成设置"
+                      className="rounded-full px-3 font-normal"
                     />
                   }
                 >
@@ -141,16 +149,19 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
                 <PopoverContent
                   side="top"
                   align="start"
-                  className="w-80 max-w-full"
+                  className="w-[min(23rem,calc(100vw-2rem))] rounded-3xl border-border bg-card p-4 shadow-xl"
                   onPointerDown={(event) => event.stopPropagation()}
                   onKeyDown={(event) => event.stopPropagation()}
                 >
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel>比例</FieldLabel>
+                  <FieldGroup className="gap-5">
+                    <Field className="gap-2">
+                      <FieldLabel className="text-base font-semibold">
+                        比例
+                      </FieldLabel>
                       <ToggleGroup
                         aria-label="比例"
-                        className="grid w-full grid-cols-4"
+                        spacing={1}
+                        className="grid w-full grid-cols-4 rounded-3xl bg-muted p-1"
                         value={[draft.aspectRatio]}
                         onValueChange={(values) => {
                           const ratio = IMAGE_GENERATION_RATIOS.find(
@@ -161,7 +172,7 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
                       >
                         {IMAGE_GENERATION_RATIOS.map((ratio) => (
                           <ToggleGroupItem
-                            className="h-18 flex-col gap-2 rounded-xl"
+                            className="h-16 flex-col gap-1.5 rounded-2xl bg-transparent px-1 text-sm font-normal text-muted-foreground transition-colors aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-sm aria-pressed:ring-1 aria-pressed:ring-border hover:bg-card/70 hover:text-foreground"
                             key={ratio}
                             value={ratio}
                             aria-label={getGenerationRatioLabel(ratio)}
@@ -178,11 +189,14 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
                         ))}
                       </ToggleGroup>
                     </Field>
-                    <Field>
-                      <FieldLabel>分辨率</FieldLabel>
+                    <Field className="gap-2">
+                      <FieldLabel className="text-base font-semibold">
+                        分辨率
+                      </FieldLabel>
                       <ToggleGroup
                         aria-label="分辨率"
-                        className="grid w-full grid-cols-3"
+                        spacing={1}
+                        className="grid w-full grid-cols-3 rounded-3xl bg-muted p-1"
                         value={[draft.size]}
                         onValueChange={(values) => {
                           const size = IMAGE_GENERATION_SIZES.find(
@@ -192,7 +206,11 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
                         }}
                       >
                         {IMAGE_GENERATION_SIZES.map((size) => (
-                          <ToggleGroupItem key={size} value={size}>
+                          <ToggleGroupItem
+                            className="h-10 rounded-2xl bg-transparent text-sm font-normal text-muted-foreground transition-colors aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-sm aria-pressed:ring-1 aria-pressed:ring-border hover:bg-card/70 hover:text-foreground"
+                            key={size}
+                            value={size}
+                          >
                             {size}
                           </ToggleGroupItem>
                         ))}
@@ -269,7 +287,7 @@ export function ImageGenerationInput() {
         anchor={selection.anchor}
         side="bottom"
         sideOffset={12}
-        className="w-80 p-2 sm:w-112 md:w-128"
+        className="w-[min(32rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none"
         aria-label="图片生成提示词"
         finalFocus={false}
       >

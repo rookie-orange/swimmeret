@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ImageEditorPage } from '@/routes/_authenticated/image-editor/-components/image-editor-page'
+import { ImageEditorPage } from './-components/image-editor-page'
 
-export const Route = createFileRoute('/(canvas)/image-editor/$id')({
+export const Route = createFileRoute('/image-editor/$id')({
   component: CanvasProjectRoute,
 })
 

@@ -13,7 +13,7 @@ import {
   useValue,
 } from 'tldraw'
 
-import { useImageEditorInspector } from './image-editor-inspector-state'
+import { useImageEditorInspector } from '../-context/image-editor-inspector-state'
 
 function ImageEditorContextMenuContent() {
   const editor = useEditor()

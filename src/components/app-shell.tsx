@@ -1,11 +1,11 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Outlet } from '@tanstack/react-router'
 import gsap from 'gsap'
 
 import { WorkspaceCapsule } from '@/components/workspace-capsule'
 import { LOGIN_REVEAL_STORAGE_KEY } from '@/lib/auth'
 
-export function AppShell() {
+export function AppShell({ children }: { children?: ReactNode }) {
   const [shouldReveal, setShouldReveal] = useState(() => {
     if (typeof window === 'undefined') return false
 
@@ -82,7 +82,7 @@ export function AppShell() {
         <WorkspaceCapsule className="flex h-full min-h-0 w-full flex-col items-center pt-4" />
       </div>
       <div className="min-h-0 min-w-0 overflow-hidden bg-card">
-        <Outlet />
+        {children ?? <Outlet />}
       </div>
       {shouldReveal && (
         <div
