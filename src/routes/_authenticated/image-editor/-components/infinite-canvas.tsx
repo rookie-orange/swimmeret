@@ -16,6 +16,7 @@ import { getCanvasBackgroundClass } from '@/lib/canvas-background'
 import { projectShapeUtils } from '@/lib/project-image-shape'
 
 import { DecompositionLoadingOverlay } from './decomposition-loading-overlay'
+import { ImageGenerationInput } from './image-generation-input'
 import { ElementToolbar } from './element-toolbar'
 import { ImageEditorContextMenu } from './image-editor-context-menu'
 
@@ -24,6 +25,7 @@ function CanvasFrontLayer() {
     <>
       <DecompositionLoadingOverlay />
       <ElementToolbar />
+      <ImageGenerationInput />
     </>
   )
 }

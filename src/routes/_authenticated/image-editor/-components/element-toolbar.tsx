@@ -33,6 +33,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { getImageGenerationDraft } from '@/lib/project-image-generation'
 
 import { useImageEditorInspector } from './image-editor-inspector-state'
 import { useLayerDecompositionContext } from './layer-decomposition-state'
@@ -201,7 +202,7 @@ export function ElementToolbar() {
       }
 
       const shape = editor.getShape(selectedIds[0])
-      if (!shape) return null
+      if (!shape || getImageGenerationDraft(shape)) return null
 
       const isImage = selectedIds.length === 1 && shape.type === 'image'
       const isGeo = editor

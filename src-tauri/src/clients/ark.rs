@@ -5,7 +5,7 @@ use crate::{
     },
     diagnostics::sha256_hex,
     error::CommandError,
-    image_generation::{GenerateImageRequest, ImageGenerationSize},
+    image_generation::GenerateImageRequest,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use reqwest::{header::CONTENT_TYPE, Client, StatusCode};
@@ -373,7 +373,7 @@ struct ArkRequest {
 struct ImageGenerationPayload {
     model: &'static str,
     prompt: String,
-    size: ImageGenerationSize,
+    size: String,
     response_format: &'static str,
     output_format: &'static str,
     watermark: bool,
@@ -381,10 +381,11 @@ struct ImageGenerationPayload {
 
 impl ImageGenerationPayload {
     fn new(request: GenerateImageRequest) -> Result<Self, CommandError> {
+        let size = request.output_size();
         Ok(Self {
             model: ARK_MODEL,
             prompt: normalize_required_prompt(request.prompt)?,
-            size: request.size,
+            size,
             response_format: "url",
             output_format: "png",
             watermark: false,
@@ -668,7 +669,8 @@ mod tests {
                         api_key: "test-key".to_string(),
                         payload: ImageGenerationPayload::new(GenerateImageRequest {
                             prompt: "  山间的小屋  ".to_string(),
-                            size: ImageGenerationSize::TwoK,
+                            size: crate::image_generation::ImageGenerationSize::TwoK,
+                            aspect_ratio: Default::default(),
                         })
                         .unwrap(),
                     },
@@ -748,7 +750,8 @@ mod tests {
         for prompt in ["  ".to_string(), "猫".repeat(4001)] {
             let result = ImageGenerationPayload::new(GenerateImageRequest {
                 prompt,
-                size: ImageGenerationSize::TwoK,
+                size: crate::image_generation::ImageGenerationSize::TwoK,
+                aspect_ratio: Default::default(),
             });
             assert_eq!(result.err().unwrap().code, "invalid_input");
         }

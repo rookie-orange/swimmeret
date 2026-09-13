@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { Renderer, Program, Mesh, Triangle } from 'ogl'
+import { cn } from '@/lib/utils'
 
 interface GrainientProps {
   timeSpeed?: number
@@ -188,9 +189,7 @@ const Grainient: React.FC<GrainientProps> = ({
 
     const gl = renderer.gl
     const canvas = gl.canvas as HTMLCanvasElement
-    canvas.style.width = '100%'
-    canvas.style.height = '100%'
-    canvas.style.display = 'block'
+    canvas.className = 'block size-full'
     container.appendChild(canvas)
 
     const geometry = new Triangle(gl)
@@ -269,7 +268,8 @@ const Grainient: React.FC<GrainientProps> = ({
     const io = new IntersectionObserver(
       ([entry]) => {
         isVisible = entry.isIntersecting
-        isVisible ? tryStart() : tryStop()
+        if (isVisible) tryStart()
+        else tryStop()
       },
       { threshold: 0 },
     )
@@ -277,7 +277,8 @@ const Grainient: React.FC<GrainientProps> = ({
 
     const onVisibility = () => {
       isPageVisible = !document.hidden
-      isPageVisible ? tryStart() : tryStop()
+      if (isPageVisible) tryStart()
+      else tryStop()
     }
     document.addEventListener('visibilitychange', onVisibility)
 
@@ -289,6 +290,9 @@ const Grainient: React.FC<GrainientProps> = ({
       io.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
       ctxMap.delete(container)
+      geometry.remove()
+      program.remove()
+      gl.getExtension('WEBGL_lose_context')?.loseContext()
       try {
         container.removeChild(canvas)
       } catch {
@@ -357,7 +361,7 @@ const Grainient: React.FC<GrainientProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full overflow-hidden ${className}`.trim()}
+      className={cn('relative size-full overflow-hidden', className)}
     />
   )
 }

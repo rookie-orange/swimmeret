@@ -1,4 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import type { ImageGenerationRatio } from '@/lib/project-image-generation'
 
 export type ImageGenerationSize = '1K' | '1.5K' | '2K'
 
@@ -24,6 +25,7 @@ function responseToArrayBuffer(response: ArrayBuffer | Uint8Array | number[]) {
 export async function generateImage(
   prompt: string,
   size: ImageGenerationSize = '2K',
+  aspectRatio: ImageGenerationRatio = 'auto',
 ) {
   if (!isTauri()) throw new Error('图片生成需要在桌面应用中使用')
   const normalizedPrompt = prompt.trim()
@@ -32,7 +34,7 @@ export async function generateImage(
     throw new Error('图片描述不能超过 4000 个字符')
   const response = await invoke<ArrayBuffer | Uint8Array | number[]>(
     'generate_image',
-    { request: { prompt: normalizedPrompt, size } },
+    { request: { prompt: normalizedPrompt, size, aspectRatio } },
   )
   return new Blob([responseToArrayBuffer(response)], { type: 'image/png' })
 }

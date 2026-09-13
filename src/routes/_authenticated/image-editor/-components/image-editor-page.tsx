@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { ImageGenerationContext } from '@/lib/image-generation-context'
 import {
   CANVAS_BACKGROUNDS,
   getCanvasBackgroundId,
@@ -296,127 +297,128 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
   }
 
   return (
-    <LayerDecompositionProvider value={layerDecompositionContext}>
-      <ImageEditorInspectorProvider value={inspectorContext}>
-        <section className="relative h-full min-h-0 overflow-hidden bg-background">
-          <input
-            accept="image/png,image/jpeg,image/webp"
-            className="sr-only"
-            multiple
-            onChange={handleFileChange}
-            ref={inputRef}
-            type="file"
-          />
-
-          <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-88">
-            <header className="pointer-events-auto flex min-w-0 items-center rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
-              <ImageEditorPageMenu editor={editor} />
-            </header>
-
-            <div className="min-w-0 flex-1 text-center">
-              {isImporting ? (
-                <p
-                  aria-live="polite"
-                  className="truncate text-xs text-muted-foreground"
-                  role="status"
-                >
-                  正在导入图片…
-                </p>
-              ) : null}
-              {error ? (
-                <p
-                  className="line-clamp-2 text-xs text-destructive"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              ) : null}
-              {layerDecomposition.error ? (
-                <p
-                  className="line-clamp-2 text-xs text-destructive"
-                  role="alert"
-                >
-                  {layerDecomposition.error}
-                </p>
-              ) : null}
-              {layerDecomposition.status ? (
-                <p
-                  aria-live="polite"
-                  className="truncate text-xs text-muted-foreground"
-                  role="status"
-                >
-                  {layerDecomposition.status}
-                </p>
-              ) : null}
-              {imageGeneration.error ? (
-                <p
-                  className="line-clamp-2 text-xs text-destructive"
-                  role="alert"
-                >
-                  {imageGeneration.error}
-                </p>
-              ) : null}
-              {imageGeneration.isGenerating ? (
-                <p
-                  aria-live="polite"
-                  className="truncate text-xs text-muted-foreground"
-                  role="status"
-                >
-                  正在生成图片…
-                </p>
-              ) : null}
-            </div>
-
-            <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
-              <HistoryControls editor={editor} />
-              <SnapControl editor={editor} />
-              <GridControl editor={editor} />
-              <BackgroundControl editor={editor} />
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      aria-label="导出"
-                      className="rounded-full"
-                      disabled={!editor}
-                      onClick={() => setIsExportOpen(true)}
-                    />
-                  }
-                >
-                  <HugeiconsIcon
-                    data-icon="inline-start"
-                    icon={Download01Icon}
-                  />
-                  导出
-                </TooltipTrigger>
-                <TooltipContent>导出</TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-
-          <main className="absolute inset-0 min-h-0 min-w-0">
-            <InfiniteCanvas
-              onMount={session.onMount}
-              assets={session.loaded.assets.store}
+    <ImageGenerationContext value={imageGeneration}>
+      <LayerDecompositionProvider value={layerDecompositionContext}>
+        <ImageEditorInspectorProvider value={inspectorContext}>
+          <section className="relative h-full min-h-0 overflow-hidden bg-background">
+            <input
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              multiple
+              onChange={handleFileChange}
+              ref={inputRef}
+              type="file"
             />
-          </main>
 
-          <ImageEditorLayers editor={editor} />
-          <ImageEditorZoomControls editor={editor} />
-          <ImageEditorDock
+            <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-88">
+              <header className="pointer-events-auto flex min-w-0 items-center rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+                <ImageEditorPageMenu editor={editor} />
+              </header>
+
+              <div className="min-w-0 flex-1 text-center">
+                {isImporting ? (
+                  <p
+                    aria-live="polite"
+                    className="truncate text-xs text-muted-foreground"
+                    role="status"
+                  >
+                    正在导入图片…
+                  </p>
+                ) : null}
+                {error ? (
+                  <p
+                    className="line-clamp-2 text-xs text-destructive"
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                ) : null}
+                {layerDecomposition.error ? (
+                  <p
+                    className="line-clamp-2 text-xs text-destructive"
+                    role="alert"
+                  >
+                    {layerDecomposition.error}
+                  </p>
+                ) : null}
+                {layerDecomposition.status ? (
+                  <p
+                    aria-live="polite"
+                    className="truncate text-xs text-muted-foreground"
+                    role="status"
+                  >
+                    {layerDecomposition.status}
+                  </p>
+                ) : null}
+                {imageGeneration.error ? (
+                  <p
+                    className="line-clamp-2 text-xs text-destructive"
+                    role="alert"
+                  >
+                    {imageGeneration.error}
+                  </p>
+                ) : null}
+                {imageGeneration.isGenerating ? (
+                  <p
+                    aria-live="polite"
+                    className="truncate text-xs text-muted-foreground"
+                    role="status"
+                  >
+                    正在生成图片…
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-0.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
+                <HistoryControls editor={editor} />
+                <SnapControl editor={editor} />
+                <GridControl editor={editor} />
+                <BackgroundControl editor={editor} />
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        aria-label="导出"
+                        className="rounded-full"
+                        disabled={!editor}
+                        onClick={() => setIsExportOpen(true)}
+                      />
+                    }
+                  >
+                    <HugeiconsIcon
+                      data-icon="inline-start"
+                      icon={Download01Icon}
+                    />
+                    导出
+                  </TooltipTrigger>
+                  <TooltipContent>导出</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+
+            <main className="absolute inset-0 min-h-0 min-w-0">
+              <InfiniteCanvas
+                onMount={session.onMount}
+                assets={session.loaded.assets.store}
+              />
+            </main>
+
+            <ImageEditorLayers editor={editor} />
+            <ImageEditorZoomControls editor={editor} />
+            <ImageEditorDock
+              editor={editor}
+              isImporting={isImporting}
+              onAddImages={openFileDialog}
+              onAddGeneration={imageGeneration.addPlaceholder}
+            />
+          </section>
+          <ExportDialog
             editor={editor}
-            isGeneratingImage={imageGeneration.isGenerating}
-            isImporting={isImporting}
-            onAddImages={openFileDialog}
-            onGenerateImage={imageGeneration.generate}
+            onOpenChange={setIsExportOpen}
+            open={isExportOpen}
           />
-        </section>
-        <ExportDialog
-          editor={editor}
-          onOpenChange={setIsExportOpen}
-          open={isExportOpen}
-        />
-      </ImageEditorInspectorProvider>
-    </LayerDecompositionProvider>
+        </ImageEditorInspectorProvider>
+      </LayerDecompositionProvider>
+    </ImageGenerationContext>
   )
 }

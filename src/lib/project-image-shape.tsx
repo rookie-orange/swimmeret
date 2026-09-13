@@ -1,4 +1,6 @@
 import type { ReactElement } from 'react'
+import { ImageGenerationPlaceholder } from '@/components/image-generation-placeholder'
+import { getImageGenerationDraft } from './project-image-generation'
 import { projectColorShapeUtils } from './project-shape-colors'
 import {
   ImageShapeUtil,
@@ -12,7 +14,13 @@ import {
 import { cn } from './utils'
 
 class ProjectImageShapeUtil extends ImageShapeUtil {
+  override canCrop(shape: TLImageShape) {
+    return !getImageGenerationDraft(shape)
+  }
+
   override component(shape: TLImageShape) {
+    if (getImageGenerationDraft(shape))
+      return <ImageGenerationPlaceholder shape={shape} />
     const adjustments = getImageAdjustments(shape)
     return (
       <div
@@ -62,6 +70,7 @@ class ProjectImageShapeUtil extends ImageShapeUtil {
   }
 
   override toSvg(shape: TLImageShape, context: SvgExportContext) {
+    if (getImageGenerationDraft(shape)) return Promise.resolve(null)
     const svg = super.toSvg(shape, {
       ...context,
       resolveAssetUrl: (assetId) =>

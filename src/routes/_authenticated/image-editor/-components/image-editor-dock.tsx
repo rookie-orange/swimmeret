@@ -1,18 +1,12 @@
+import { useCallback, useRef, useState } from 'react'
 import {
-  useCallback,
-  useRef,
-  useState,
-  type ReactNode,
-  type RefObject,
-} from 'react'
-import {
+  Add01Icon,
+  AiImageIcon,
   ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowUp01Icon,
-  ArrowUp02Icon,
   ArrowUpRight03Icon,
-  Cancel01Icon,
   CloudIcon,
   MousePointer01Icon,
   DiamondIcon,
@@ -40,12 +34,6 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import {
-  AnimatePresence,
-  motion,
-  useIsPresent,
-  useReducedMotion,
-} from 'motion/react'
-import {
   DefaultColorStyle,
   GeoShapeGeoStyle,
   type Editor,
@@ -54,12 +42,12 @@ import {
 
 import { Button } from '@/components/ui/button'
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from '@/components/ui/input-group'
-import { Spinner } from '@/components/ui/spinner'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
   TooltipContent,
@@ -72,7 +60,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 
-import { AiToolIcon } from './ai-tool-icon'
 import { editorCapsuleClassName } from './editor-capsule'
 
 interface ToolDefinition {
@@ -404,152 +391,24 @@ function ShapeToolPicker({
   )
 }
 
-function DockPanel({
-  children,
-  onEntered,
-}: {
-  children: ReactNode
-  onEntered?: () => void
-}) {
-  const isPresent = useIsPresent()
-  const reduceMotion = useReducedMotion()
-
-  return (
-    <motion.div
-      animate="visible"
-      aria-hidden={!isPresent}
-      className="w-full"
-      exit="exit"
-      inert={!isPresent}
-      initial="enter"
-      onAnimationComplete={(definition) => {
-        if (definition === 'visible' && isPresent) onEntered?.()
-      }}
-      transition={
-        reduceMotion ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }
-      }
-      variants={{
-        enter: {
-          opacity: 0,
-          y: reduceMotion ? 0 : 6,
-          scale: reduceMotion ? 1 : 0.98,
-        },
-        visible: { opacity: 1, y: 0, scale: 1 },
-        exit: {
-          opacity: 0,
-          y: reduceMotion ? 0 : -6,
-          scale: reduceMotion ? 1 : 0.98,
-        },
-      }}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-function DockAiInput({
-  draft,
-  inputRef,
-  onDraftChange,
-  onClose,
-  onSubmit,
-  isSubmitting,
-}: {
-  draft: string
-  inputRef: RefObject<HTMLInputElement | null>
-  onDraftChange: (draft: string) => void
-  onClose: () => void
-  onSubmit: (prompt: string) => Promise<void>
-  isSubmitting: boolean
-}) {
-  return (
-    <form
-      aria-label="AI 生图"
-      aria-busy={isSubmitting}
-      className="w-full"
-      onSubmit={(event) => {
-        event.preventDefault()
-        const normalized = draft.trim()
-        if (!normalized || isSubmitting) return
-        void onSubmit(normalized)
-      }}
-    >
-      <InputGroup
-        className="h-12 rounded-2xl border-0 bg-transparent"
-        onKeyDown={(event) => {
-          event.stopPropagation()
-          const isComposing =
-            event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229
-          if (event.key === 'Enter' && isComposing) event.preventDefault()
-          if (event.key === 'Escape' && !isComposing && !isSubmitting) {
-            event.preventDefault()
-            onClose()
-          }
-        }}
-        onKeyUp={(event) => event.stopPropagation()}
-      >
-        <InputGroupInput
-          aria-label="图片描述"
-          autoFocus
-          disabled={isSubmitting}
-          onChange={(event) => onDraftChange(event.target.value)}
-          placeholder="描述你想生成的图片…"
-          ref={inputRef}
-          value={draft}
-        />
-        <InputGroupAddon align="inline-start">
-          <InputGroupButton
-            aria-label="关闭 AI 输入"
-            disabled={isSubmitting}
-            onClick={onClose}
-            size="icon-sm"
-          >
-            <HugeiconsIcon icon={Cancel01Icon} />
-          </InputGroupButton>
-        </InputGroupAddon>
-        <InputGroupAddon align="inline-end">
-          <InputGroupButton
-            aria-label="生成图片"
-            disabled={!draft.trim() || isSubmitting}
-            size="icon-sm"
-            type="submit"
-            variant="default"
-          >
-            {isSubmitting ? (
-              <Spinner />
-            ) : (
-              <HugeiconsIcon icon={ArrowUp02Icon} />
-            )}
-          </InputGroupButton>
-        </InputGroupAddon>
-      </InputGroup>
-    </form>
-  )
-}
-
 interface ImageEditorDockProps {
   editor: Editor | null
   isImporting: boolean
   onAddImages: () => void
-  onGenerateImage: (prompt: string) => Promise<boolean>
-  isGeneratingImage: boolean
+  onAddGeneration: () => void
 }
 
 export function ImageEditorDock({
   editor,
   isImporting,
   onAddImages,
-  onGenerateImage,
-  isGeneratingImage,
+  onAddGeneration,
 }: ImageEditorDockProps) {
-  const [isAiOpen, setIsAiOpen] = useState(false)
-  const [aiDraft, setAiDraft] = useState('')
-  const [isAiHovered, setIsAiHovered] = useState(false)
-  const [isAiFocused, setIsAiFocused] = useState(false)
-  const aiButtonRef = useRef<HTMLButtonElement>(null)
-  const aiInputRef = useRef<HTMLInputElement>(null)
-  const restoreAiFocus = useRef(false)
-  const reduceMotion = useReducedMotion()
+  const isReadonly = useValue(
+    'dock readonly',
+    () => editor?.getIsReadonly() ?? true,
+    [editor],
+  )
   const activeToolId = useValue(
     'image editor active tool',
     () => editor?.getCurrentToolId() ?? 'select',
@@ -610,148 +469,80 @@ export function ImageEditorDock({
 
   return (
     <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-60 xl:right-88">
-      <motion.div
-        className={cn(
-          editorCapsuleClassName,
-          'relative w-120 max-w-full',
-          isAiOpen && 'w-lg',
-        )}
-        layout
+      <div
+        className={cn(editorCapsuleClassName, 'relative w-112 max-w-full')}
         onPointerDown={(event) => event.stopPropagation()}
-        transition={
-          reduceMotion
-            ? { duration: 0 }
-            : { layout: { type: 'spring', bounce: 0, duration: 0.32 } }
-        }
       >
-        <AnimatePresence initial={false} mode="wait">
-          {isAiOpen ? (
-            <DockPanel key="ai-input">
-              <DockAiInput
-                draft={aiDraft}
-                inputRef={aiInputRef}
-                onDraftChange={setAiDraft}
-                onSubmit={async (prompt) => {
-                  if (await onGenerateImage(prompt)) setAiDraft('')
-                }}
-                isSubmitting={isGeneratingImage}
-                onClose={() => {
-                  restoreAiFocus.current = true
-                  setIsAiOpen(false)
-                }}
+        <div
+          aria-label="画布工具"
+          className="flex min-w-0 items-center justify-between gap-0 overflow-x-auto p-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
+          role="toolbar"
+        >
+          {primaryTools.map((tool) =>
+            tool.id === 'draw' ? (
+              <HoverToolPicker
+                key={tool.id}
+                tool={tool}
+                options={drawQuickTools}
+                activeToolId={activeToolId}
+                disabled={!editor}
+                onActivate={activateTool}
               />
-            </DockPanel>
-          ) : (
-            <DockPanel
-              key="tools"
-              onEntered={() => {
-                if (!restoreAiFocus.current) return
-                restoreAiFocus.current = false
-                aiButtonRef.current?.focus()
-              }}
-            >
-              <div
-                aria-label="画布工具"
-                className="flex min-w-0 items-center justify-between gap-0 overflow-x-auto p-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
-                role="toolbar"
-              >
-                {primaryTools.map((tool) =>
-                  tool.id === 'draw' ? (
-                    <HoverToolPicker
-                      key={tool.id}
-                      tool={tool}
-                      options={drawQuickTools}
-                      activeToolId={activeToolId}
-                      disabled={!editor}
-                      onActivate={activateTool}
-                    />
-                  ) : tool.id === 'note' ? (
-                    <NoteToolPicker
-                      key={tool.id}
-                      activeToolId={activeToolId}
-                      disabled={!editor}
-                      onActivate={activateTool}
-                      onColor={activateNoteColor}
-                      activeColor={activeColor}
-                    />
-                  ) : (
-                    <DockToolButton
-                      key={tool.id}
-                      activeToolId={activeToolId}
-                      disabled={!editor}
-                      onActivate={activateTool}
-                      tool={tool}
-                    />
-                  ),
-                )}
-                <ShapeToolPicker
-                  activeGeo={activeGeo}
-                  activeToolId={activeToolId}
-                  disabled={!editor || isAiOpen}
-                  onActivate={activateTool}
-                />
-                <DockToolButton
-                  activeToolId={activeToolId}
-                  disabled={!editor}
-                  onActivate={activateTool}
-                  tool={secondaryTools[2]}
-                />
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        aria-label="素材"
-                        disabled={!editor || isImporting}
-                        onClick={onAddImages}
-                        size="icon-lg"
-                        variant="ghost"
-                      />
-                    }
-                  >
-                    <HugeiconsIcon icon={ImageAdd01Icon} />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isImporting ? '正在导入' : '素材'}
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        aria-label="AI 生图"
-                        disabled={!editor}
-                        onBlur={() => setIsAiFocused(false)}
-                        onClick={() => {
-                          editor?.complete()
-                          editor?.blur()
-                          setIsAiHovered(false)
-                          setIsAiFocused(false)
-                          setIsAiOpen(true)
-                        }}
-                        onFocus={(event) =>
-                          setIsAiFocused(
-                            event.currentTarget.matches(':focus-visible'),
-                          )
-                        }
-                        onMouseEnter={() => setIsAiHovered(true)}
-                        onMouseLeave={() => setIsAiHovered(false)}
-                        ref={aiButtonRef}
-                        size="icon-lg"
-                        variant="ghost"
-                      />
-                    }
-                  >
-                    <AiToolIcon
-                      active={!isAiOpen && (isAiHovered || isAiFocused)}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>AI 生图</TooltipContent>
-                </Tooltip>
-              </div>
-            </DockPanel>
+            ) : tool.id === 'note' ? (
+              <NoteToolPicker
+                key={tool.id}
+                activeToolId={activeToolId}
+                disabled={!editor}
+                onActivate={activateTool}
+                onColor={activateNoteColor}
+                activeColor={activeColor}
+              />
+            ) : (
+              <DockToolButton
+                key={tool.id}
+                activeToolId={activeToolId}
+                disabled={!editor}
+                onActivate={activateTool}
+                tool={tool}
+              />
+            ),
           )}
-        </AnimatePresence>
-      </motion.div>
+          <ShapeToolPicker
+            activeGeo={activeGeo}
+            activeToolId={activeToolId}
+            disabled={!editor}
+            onActivate={activateTool}
+          />
+          <DockToolButton
+            activeToolId={activeToolId}
+            disabled={!editor}
+            onActivate={activateTool}
+            tool={secondaryTools[2]}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={!editor || isReadonly}
+              render={
+                <Button aria-label="添加" size="icon-lg" variant="ghost" />
+              }
+            >
+              <HugeiconsIcon icon={Add01Icon} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" sideOffset={12}>
+              <DropdownMenuGroup>
+                <DropdownMenuItem disabled={isImporting} onClick={onAddImages}>
+                  <HugeiconsIcon icon={ImageAdd01Icon} />
+                  添加素材
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onAddGeneration}>
+                  <HugeiconsIcon icon={AiImageIcon} />
+                  文生图
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     </div>
   )
 }
