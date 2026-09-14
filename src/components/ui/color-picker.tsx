@@ -38,20 +38,31 @@ const presets = [
 export function ColorSwatch({
   color,
   stroke = false,
+  round = false,
 }: {
   color: string | null
   stroke?: boolean
+  round?: boolean
 }) {
   return (
     <svg viewBox="0 0 24 24" className="size-6 shrink-0" aria-hidden="true">
-      <rect
-        x="2"
-        y="2"
-        width="20"
-        height="20"
-        rx="5"
-        className="fill-background stroke-border"
-      />
+      {round ? (
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+          className="fill-background stroke-border"
+        />
+      ) : (
+        <rect
+          x="2"
+          y="2"
+          width="20"
+          height="20"
+          rx="5"
+          className="fill-background stroke-border"
+        />
+      )}
       {color === 'transparent' ? (
         <path
           d="M5 19 19 5"
@@ -71,6 +82,15 @@ export function ColorSwatch({
             strokeWidth="2"
           />
         </>
+      ) : round ? (
+        <circle
+          cx="12"
+          cy="12"
+          r={stroke ? 7 : 9}
+          fill={stroke ? 'none' : color}
+          stroke={stroke ? color : 'none'}
+          strokeWidth="4"
+        />
       ) : (
         <rect
           x={stroke ? 5 : 2}
@@ -176,7 +196,7 @@ export function ColorPicker({
           />
         }
       >
-        <ColorSwatch color={normalized} stroke={stroke} />
+        <ColorSwatch color={normalized} stroke={stroke} round={compact} />
         {!compact ? (
           <>
             <span className="flex-1 text-left tabular-nums">

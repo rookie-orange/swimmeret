@@ -12,10 +12,12 @@ export function SelectionColorPicker({
   editor,
   channel,
   compact = false,
+  quick = compact,
 }: {
   editor: Editor
   channel: ShapeColorChannel
   compact?: boolean
+  quick?: boolean
 }) {
   const selection = useValue(
     `selection ${channel} color`,
@@ -51,7 +53,7 @@ export function SelectionColorPicker({
       }
       color={selection.color}
       compact={compact}
-      quick={compact}
+      quick={quick}
       stroke={channel === 'stroke'}
       allowTransparent={channel !== 'color'}
       disabled={selection.disabled}

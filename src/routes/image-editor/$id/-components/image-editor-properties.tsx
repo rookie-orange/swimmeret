@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { InspectorActions } from './inspector-actions'
 import { InspectorNumber, InspectorSection } from './inspector-controls'
@@ -206,31 +207,58 @@ function PropertySelect({
   value: string | 'mixed' | null
 }) {
   const id = useId()
+  const useRadio = options.length <= 4
 
   return (
-    <Field className="gap-2">
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Select
-        disabled={disabled}
-        items={options}
-        onValueChange={(nextValue) => {
-          if (nextValue) onValueChange(nextValue)
-        }}
-        value={value === 'mixed' ? null : value}
-      >
-        <SelectTrigger className="w-full rounded-xl" id={id}>
-          <SelectValue placeholder={value === 'mixed' ? '混合' : '未设置'} />
-        </SelectTrigger>
-        <SelectContent alignItemWithTrigger={false}>
-          <SelectGroup>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+    <Field orientation="horizontal" className="items-center gap-3">
+      <FieldLabel className="w-20 shrink-0" htmlFor={id}>
+        {label}
+      </FieldLabel>
+      {useRadio ? (
+        <ToggleGroup
+          id={id}
+          aria-label={label}
+          disabled={disabled}
+          spacing={1}
+          className="grid w-full min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(0,1fr))] rounded-xl bg-muted p-1"
+          value={value === 'mixed' || value === null ? [] : [value]}
+          onValueChange={(values) => {
+            if (values[0]) onValueChange(values[0])
+          }}
+        >
+          {options.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              value={option.value}
+              className="min-w-0 rounded-lg px-2 text-xs font-normal text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-sm"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      ) : (
+        <Select
+          disabled={disabled}
+          items={options}
+          onValueChange={(nextValue) => {
+            if (nextValue) onValueChange(nextValue)
+          }}
+          value={value === 'mixed' ? null : value}
+        >
+          <SelectTrigger className="min-w-0 flex-1 rounded-xl" id={id}>
+            <SelectValue placeholder={value === 'mixed' ? '混合' : '未设置'} />
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false}>
+            <SelectGroup>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
     </Field>
   )
 }
@@ -391,7 +419,7 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
           ) : null}
           {selection.font !== null && selection.hasText ? (
             <InspectorSection title="文字">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-3">
                 {selectStyle(
                   '字体',
                   DefaultFontStyle,
@@ -399,9 +427,14 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
                   fontOptions,
                 )}
                 {selection.onlyText ? (
-                  <Field>
-                    <FieldLabel>字号</FieldLabel>
-                    <SelectionFontSize editor={editor} />
+                  <Field
+                    orientation="horizontal"
+                    className="items-center gap-3"
+                  >
+                    <FieldLabel className="w-20 shrink-0">字号</FieldLabel>
+                    <div className="min-w-0 flex-1">
+                      <SelectionFontSize editor={editor} />
+                    </div>
                   </Field>
                 ) : (
                   selectStyle('字号', DefaultSizeStyle, selection.size, [
@@ -412,7 +445,7 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
                   ])
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-3">
                 {selectStyle(
                   '文字对齐',
                   DefaultTextAlignStyle,
@@ -436,7 +469,19 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
           ) : null}
           {selection.hasTextColor ? (
             <InspectorSection title="文字颜色">
-              <SelectionColorPicker editor={editor} channel="color" />
+              <div className="flex items-center gap-3">
+                <FieldLabel className="w-20 shrink-0">颜色</FieldLabel>
+                <div className="min-w-0 flex-1">
+                  <div className="flex justify-end">
+                    <SelectionColorPicker
+                      editor={editor}
+                      channel="color"
+                      compact
+                      quick={false}
+                    />
+                  </div>
+                </div>
+              </div>
             </InspectorSection>
           ) : null}
           {selection.color !== null && selection.hasLegacyColor ? (
@@ -487,7 +532,19 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
           {selection.fill !== null ? (
             <InspectorSection title="填充">
               {selection.hasFillColor ? (
-                <SelectionColorPicker editor={editor} channel="fill" />
+                <div className="flex items-center gap-3">
+                  <FieldLabel className="w-20 shrink-0">颜色</FieldLabel>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-end">
+                      <SelectionColorPicker
+                        editor={editor}
+                        channel="fill"
+                        compact
+                        quick={false}
+                      />
+                    </div>
+                  </div>
+                </div>
               ) : null}
               {selectStyle(
                 '填充方式',
@@ -501,9 +558,21 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
             <InspectorSection title="描边">
               <SelectionStrokeWidth editor={editor} />
               {selection.hasStrokeColor ? (
-                <SelectionColorPicker editor={editor} channel="stroke" />
+                <div className="flex items-center gap-3">
+                  <FieldLabel className="w-20 shrink-0">颜色</FieldLabel>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-end">
+                      <SelectionColorPicker
+                        editor={editor}
+                        channel="stroke"
+                        compact
+                        quick={false}
+                      />
+                    </div>
+                  </div>
+                </div>
               ) : null}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-3">
                 {selectStyle(
                   '线型',
                   DefaultDashStyle,
@@ -515,7 +584,7 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
           ) : null}
           {selection.arrowKind !== null || selection.spline !== null ? (
             <InspectorSection title="路径">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-3">
                 {selectStyle(
                   '箭头路径',
                   ArrowShapeKindStyle,
@@ -543,8 +612,9 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
               </div>
             </InspectorSection>
           ) : null}
-          <InspectorSection title="不透明度">
-            <div className="flex items-center gap-4">
+          <InspectorSection>
+            <div className="flex items-center gap-3">
+              <FieldLabel className="w-20 shrink-0">不透明度</FieldLabel>
               <Slider
                 aria-label="不透明度"
                 disabled={disabled}
@@ -564,7 +634,7 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
                   editor.setOpacityForSelectedShapes(value / 100)
                 }
               />
-              <div className="w-24 shrink-0">
+              <div className="w-20 shrink-0">
                 <InspectorNumber
                   label="不透明度数值"
                   suffix="%"

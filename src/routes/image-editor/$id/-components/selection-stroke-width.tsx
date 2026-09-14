@@ -39,7 +39,7 @@ export function SelectionStrokeWidth({
   const start = () => editor.markHistoryStoppingPoint('change stroke width')
   return (
     <div className="flex items-center gap-3 py-2">
-      <span className="shrink-0 text-xs text-muted-foreground">粗细</span>
+      <span className="shrink-0 text-sm text-foreground">粗细</span>
       <Slider
         aria-label="描边粗细"
         disabled={selection.disabled}

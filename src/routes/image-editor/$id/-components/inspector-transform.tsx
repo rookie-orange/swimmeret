@@ -11,6 +11,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { type Editor, useValue } from 'tldraw'
 import { Button } from '@/components/ui/button'
+import { FieldLabel } from '@/components/ui/field'
 import {
   InspectorAction,
   InspectorNumber,
@@ -113,7 +114,7 @@ export function InspectorTransform({
     })
   }
   return (
-    <>
+    <div data-inspector-transform className="contents">
       {selection.shapes.length > 1 ? (
         <InspectorSection title="对齐与分布">
           <div className="flex items-center justify-between gap-1 rounded-xl bg-muted p-1">
@@ -151,7 +152,6 @@ export function InspectorTransform({
         </InspectorSection>
       ) : null}
       <InspectorSection
-        title="尺寸"
         action={
           canResize && !isText ? (
             <InspectorAction
@@ -164,23 +164,26 @@ export function InspectorTransform({
           ) : null
         }
       >
-        <div className="grid grid-cols-2 gap-2">
-          <InspectorNumber
-            label="宽度"
-            suffix="宽"
-            value={bounds.w}
-            min={1}
-            disabled={disabled || !canResize}
-            onCommit={(value) => changeSize('x', value)}
-          />
-          <InspectorNumber
-            label="高度"
-            suffix="高"
-            value={bounds.h}
-            min={1}
-            disabled={disabled || !canResize || isText}
-            onCommit={(value) => changeSize('y', value)}
-          />
+        <div className="flex items-center gap-3">
+          <FieldLabel className="w-20 shrink-0">尺寸</FieldLabel>
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+            <InspectorNumber
+              label="宽度"
+              suffix="宽"
+              value={bounds.w}
+              min={1}
+              disabled={disabled || !canResize}
+              onCommit={(value) => changeSize('x', value)}
+            />
+            <InspectorNumber
+              label="高度"
+              suffix="高"
+              value={bounds.h}
+              min={1}
+              disabled={disabled || !canResize || isText}
+              onCommit={(value) => changeSize('y', value)}
+            />
+          </div>
         </div>
         {isText ? (
           <p className="text-xs text-muted-foreground">
@@ -188,43 +191,51 @@ export function InspectorTransform({
           </p>
         ) : null}
       </InspectorSection>
-      <InspectorSection title="位置">
-        <div className="grid grid-cols-2 gap-2">
-          <InspectorNumber
-            label="水平位置"
-            suffix="X"
-            value={position.x}
-            disabled={disabled}
-            onCommit={(value) => move('x', value)}
-          />
-          <InspectorNumber
-            label="垂直位置"
-            suffix="Y"
-            value={position.y}
-            disabled={disabled}
-            onCommit={(value) => move('y', value)}
-          />
+      <InspectorSection>
+        <div className="flex items-center gap-3">
+          <FieldLabel className="w-20 shrink-0">位置</FieldLabel>
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+            <InspectorNumber
+              label="水平位置"
+              suffix="X"
+              value={position.x}
+              disabled={disabled}
+              onCommit={(value) => move('x', value)}
+            />
+            <InspectorNumber
+              label="垂直位置"
+              suffix="Y"
+              value={position.y}
+              disabled={disabled}
+              onCommit={(value) => move('y', value)}
+            />
+          </div>
         </div>
         {shape ? (
-          <InspectorNumber
-            label="旋转角度"
-            suffix="°"
-            value={selection.rotation}
-            disabled={disabled}
-            onCommit={(value) => {
-              if (disabled) return
-              const current = editor.getShape(shape.id)
-              if (!current) return
-              editor.markHistoryStoppingPoint('rotate inspector selection')
-              editor.rotateShapesBy(
-                [current.id],
-                (value * Math.PI) / 180 -
-                  editor.getShapePageTransform(current).rotation(),
-              )
-            }}
-          />
+          <div className="flex items-center gap-3">
+            <FieldLabel className="w-20 shrink-0">旋转</FieldLabel>
+            <div className="min-w-0 flex-1">
+              <InspectorNumber
+                label="旋转角度"
+                suffix="°"
+                value={selection.rotation}
+                disabled={disabled}
+                onCommit={(value) => {
+                  if (disabled) return
+                  const current = editor.getShape(shape.id)
+                  if (!current) return
+                  editor.markHistoryStoppingPoint('rotate inspector selection')
+                  editor.rotateShapesBy(
+                    [current.id],
+                    (value * Math.PI) / 180 -
+                      editor.getShapePageTransform(current).rotation(),
+                  )
+                }}
+              />
+            </div>
+          </div>
         ) : null}
       </InspectorSection>
-    </>
+    </div>
   )
 }
