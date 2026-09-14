@@ -5,7 +5,7 @@ import {
   ArrowUp02Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useEditor, useValue, type TLImageShape } from 'tldraw'
+import { useEditor, type TLImageShape } from 'tldraw'
 
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import {
@@ -42,7 +42,7 @@ const ratioIconClasses = {
   '16:9': 'h-3.5 w-6',
 } as const
 
-function GenerationForm({ shape }: { shape: TLImageShape }) {
+export function GenerationForm({ shape }: { shape: TLImageShape }) {
   const editor = useEditor()
   const { generate } = useImageGenerationContext()
   const draft = getImageGenerationDraft(shape)!
@@ -110,7 +110,6 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
           <InputGroup className="rounded-3xl border-border bg-card shadow-sm has-[[data-slot=input-group-control]:focus-visible]:!border-border has-[[data-slot=input-group-control]:focus-visible]:!ring-0">
             <InputGroupTextarea
               id={inputId}
-              autoFocus
               aria-invalid={tooLong || undefined}
               className="min-h-24 px-3 pt-3 text-sm placeholder:text-muted-foreground/60 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0"
               placeholder="描述你的灵感，支持 @ 上传图片、选择技能以及 Agent"
@@ -149,6 +148,7 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
                 <PopoverContent
                   side="top"
                   align="start"
+                  positionerClassName="z-[400]"
                   className="w-[min(23rem,calc(100vw-2rem))] rounded-3xl border-border bg-card p-4 shadow-xl"
                   onPointerDown={(event) => event.stopPropagation()}
                   onKeyDown={(event) => event.stopPropagation()}
@@ -239,60 +239,5 @@ function GenerationForm({ shape }: { shape: TLImageShape }) {
         </Field>
       </FieldGroup>
     </form>
-  )
-}
-
-export function ImageGenerationInput() {
-  const editor = useEditor()
-  const { pendingIds } = useImageGenerationContext()
-  const selection = useValue(
-    'image generation input',
-    () => {
-      const shape = editor.getOnlySelectedShape()
-      if (
-        !shape ||
-        !getImageGenerationDraft(shape) ||
-        editor.getIsReadonly() ||
-        editor.isShapeOrAncestorLocked(shape) ||
-        !editor.isIn('select.idle')
-      )
-        return null
-      const bounds = editor.getSelectionRotatedScreenBounds()
-      if (!bounds) return null
-      const viewport = editor.getViewportScreenBounds()
-      if (!bounds.collides(viewport)) return null
-      return {
-        shape: shape as TLImageShape,
-        anchor: {
-          getBoundingClientRect: () =>
-            new DOMRect(bounds.x, bounds.y, bounds.w, bounds.h),
-        },
-      }
-    },
-    [editor],
-  )
-  if (!selection || pendingIds.includes(selection.shape.id)) return null
-  return (
-    <Popover
-      key={selection.shape.id}
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          editor.deselect()
-          editor.focus()
-        }
-      }}
-    >
-      <PopoverContent
-        anchor={selection.anchor}
-        side="bottom"
-        sideOffset={12}
-        className="w-[min(32rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none"
-        aria-label="图片生成提示词"
-        finalFocus={false}
-      >
-        <GenerationForm shape={selection.shape} />
-      </PopoverContent>
-    </Popover>
   )
 }

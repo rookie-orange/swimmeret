@@ -15,7 +15,7 @@ import {
   UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useActions, useEditor, useValue } from 'tldraw'
+import { useActions, useEditor, useValue, type TLImageShape } from 'tldraw'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -34,18 +34,22 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { getImageGenerationDraft } from '@/lib/project-image-generation'
+import { useImageGenerationContext } from '@/lib/image-generation-context'
 
 import { useImageEditorInspector } from '../-context/image-editor-inspector-state'
 import { useLayerDecompositionContext } from '../-context/layer-decomposition-state'
 import { ExportDialog } from './export-dialog'
 import { ElementMoreMenu } from './element-more-menu'
+import { GenerationForm } from './image-generation-input'
 import { SelectionColorPicker } from './selection-color-picker'
 import { SelectionSizeMenu } from './selection-size-menu'
 
 // 与下方 Tailwind 固定宽高保持同步，用于精确约束画布内定位。
 const TOOLBAR_WIDTH = 192
 const IMAGE_TOOLBAR_WIDTH = 288
+const GENERATION_TOOLBAR_WIDTH = 512
 const TOOLBAR_HEIGHT = 40
+const GENERATION_TOOLBAR_HEIGHT = 192
 const TOOLBAR_GAP = 8
 const VIEWPORT_MARGIN = 8
 
@@ -187,6 +191,7 @@ export function ElementToolbar() {
   const editor = useEditor()
   const { setActiveTab } = useImageEditorInspector()
   const { isOpen, isPending, openForShape } = useLayerDecompositionContext()
+  const { pendingIds } = useImageGenerationContext()
   const [isExportOpen, setIsExportOpen] = useState(false)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const placement = useValue(
@@ -202,7 +207,10 @@ export function ElementToolbar() {
       }
 
       const shape = editor.getShape(selectedIds[0])
-      if (!shape || getImageGenerationDraft(shape)) return null
+      if (!shape) return null
+
+      const isImageGeneration =
+        selectedIds.length === 1 && !!getImageGenerationDraft(shape)
 
       const isImage = selectedIds.length === 1 && shape.type === 'image'
       const isGeo = editor
@@ -222,7 +230,14 @@ export function ElementToolbar() {
         editor
           .getSelectedShapes()
           .some((selected) => !editor.isShapeOrAncestorLocked(selected))
-      const toolbarWidth = isWide ? IMAGE_TOOLBAR_WIDTH : TOOLBAR_WIDTH
+      const toolbarWidth = isImageGeneration
+        ? GENERATION_TOOLBAR_WIDTH
+        : isWide
+          ? IMAGE_TOOLBAR_WIDTH
+          : TOOLBAR_WIDTH
+      const toolbarHeight = isImageGeneration
+        ? GENERATION_TOOLBAR_HEIGHT
+        : TOOLBAR_HEIGHT
       const bounds = editor.getSelectionRotatedScreenBounds()
       if (!bounds) return null
 
@@ -230,9 +245,9 @@ export function ElementToolbar() {
       const selectionTop = bounds.minY - viewport.minY
       const selectionBottom = bounds.maxY - viewport.minY
       const hasRoomAbove =
-        selectionTop >= TOOLBAR_HEIGHT + TOOLBAR_GAP + VIEWPORT_MARGIN
+        selectionTop >= toolbarHeight + TOOLBAR_GAP + VIEWPORT_MARGIN
       const unclampedTop = hasRoomAbove
-        ? selectionTop - TOOLBAR_HEIGHT - TOOLBAR_GAP
+        ? selectionTop - toolbarHeight - TOOLBAR_GAP
         : selectionBottom + TOOLBAR_GAP
       const maxLeft = Math.max(
         VIEWPORT_MARGIN,
@@ -240,11 +255,12 @@ export function ElementToolbar() {
       )
       const maxTop = Math.max(
         VIEWPORT_MARGIN,
-        viewport.height - TOOLBAR_HEIGHT - VIEWPORT_MARGIN,
+        viewport.height - toolbarHeight - VIEWPORT_MARGIN,
       )
 
       return {
         shapeIds: selectedIds,
+        isImageGeneration,
         isImage,
         isGeo,
         isStroke,
@@ -278,6 +294,24 @@ export function ElementToolbar() {
   )
 
   if (!placement || isOpen) return null
+
+  if (placement.isImageGeneration) {
+    const shape = editor.getShape<TLImageShape>(placement.shapeIds[0])
+    if (
+      !shape ||
+      !getImageGenerationDraft(shape) ||
+      pendingIds.includes(shape.id)
+    )
+      return null
+    return (
+      <div
+        className="pointer-events-auto absolute top-0 left-0 w-[min(32rem,calc(100vw-2rem))]"
+        ref={toolbarRef}
+      >
+        <GenerationForm shape={shape} />
+      </div>
+    )
+  }
 
   const runAction = (action: (typeof actions)[number]['id']) => {
     const shapeIds = placement.shapeIds.filter((id) => editor.getShape(id))
