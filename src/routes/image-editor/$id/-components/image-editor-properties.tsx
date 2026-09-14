@@ -454,8 +454,8 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
                     size="icon-sm"
                     variant="ghost"
                     className={cn(
-                      'rounded-lg p-1',
-                      selection.color === option.value && 'ring-2 ring-ring',
+                      'rounded-full p-1',
+                      selection.color === option.value && 'ring-2 ring-primary',
                     )}
                     onClick={() =>
                       updateSelectedStyle(
@@ -467,8 +467,11 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
                   >
                     <span
                       className={cn(
-                        'size-5 rounded-md border border-foreground/10',
-                        option.className,
+                        'size-5 rounded-full border border-foreground/10',
+                        selection.shapeType === 'note' &&
+                          option.value === 'black'
+                          ? 'bg-canvas-swatch-yellow'
+                          : option.className,
                       )}
                     />
                   </Button>

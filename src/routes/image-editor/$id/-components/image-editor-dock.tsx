@@ -35,6 +35,7 @@ import {
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import {
   DefaultColorStyle,
+  ArrowShapeKindStyle,
   GeoShapeGeoStyle,
   type Editor,
   useValue,
@@ -130,7 +131,8 @@ const quickGeoTools = [
 const drawQuickTools = [primaryTools[2], secondaryTools[1]] as const
 
 const dockColors = [
-  ['black', '!bg-canvas-swatch-black'],
+  // tldraw 的便签将 black 映射为黄色背景，保持值为 black 以兼容其样式系统。
+  ['black', '!bg-canvas-swatch-yellow'],
   ['blue', '!bg-canvas-swatch-blue'],
   ['red', '!bg-canvas-swatch-red'],
   ['yellow', '!bg-canvas-swatch-yellow'],
@@ -270,9 +272,9 @@ function NoteToolPicker({
               size="icon"
               variant="ghost"
               className={cn(
-                'size-7 rounded-md border border-border p-0 !text-transparent hover:!brightness-100 focus:!brightness-100',
+                'size-7 rounded-full border border-border p-0 !text-transparent hover:!brightness-100 focus:!brightness-100',
                 colorClass,
-                activeColor === color && 'ring-2 ring-ring ring-offset-1',
+                activeColor === color && 'ring-2 ring-primary ring-offset-1',
               )}
               onClick={() => {
                 setOpen(false)
@@ -370,20 +372,27 @@ function ShapeToolPicker({
         onMouseEnter={enter}
         onMouseLeave={leave}
       >
-        <div className="grid grid-cols-6 gap-1">
+        <div className="grid grid-cols-3 gap-2">
           {quickGeoTools.map((tool) => (
-            <Button
+            <div
               key={tool.id}
-              aria-label={tool.label}
-              size="icon"
-              variant={activeGeo.id === tool.id ? 'secondary' : 'ghost'}
-              onClick={() => {
-                setOpen(false)
-                onActivate(tool.id)
-              }}
+              className="flex w-14 flex-col items-center gap-1"
             >
-              <HugeiconsIcon icon={tool.icon} />
-            </Button>
+              <Button
+                aria-label={tool.label}
+                size="icon"
+                variant={activeGeo.id === tool.id ? 'default' : 'ghost'}
+                onClick={() => {
+                  setOpen(false)
+                  onActivate(tool.id)
+                }}
+              >
+                <HugeiconsIcon icon={tool.icon} />
+              </Button>
+              <span className="text-[10px] leading-none text-muted-foreground">
+                {tool.label}
+              </span>
+            </div>
           ))}
         </div>
       </PopoverContent>
@@ -436,7 +445,8 @@ export function ImageEditorDock({
     (toolId: string) => {
       if (!editor) return
 
-      if (toolId === 'arrow-elbow') toolId = 'arrow'
+      const isElbowArrow = toolId === 'arrow-elbow'
+      if (isElbowArrow) toolId = 'arrow'
 
       const geoTool = geoTools.find((tool) => tool.id === toolId)
       editor.run(() => {
@@ -444,6 +454,13 @@ export function ImageEditorDock({
           editor.setStyleForNextShapes(GeoShapeGeoStyle, geoTool.id)
           editor.setCurrentTool('geo')
           return
+        }
+
+        if (toolId === 'arrow') {
+          editor.setStyleForNextShapes(
+            ArrowShapeKindStyle,
+            isElbowArrow ? 'elbow' : 'arc',
+          )
         }
 
         if (toolId === 'select' && editor.isIn('select')) {
@@ -468,7 +485,11 @@ export function ImageEditorDock({
   )
 
   return (
-    <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-20 flex min-w-0 justify-center sm:right-4 sm:bottom-4 sm:left-60 xl:right-88">
+    <div
+      className={cn(
+        'pointer-events-none absolute bottom-2 left-2 right-[calc(var(--inspector-width)+2rem)] z-20 flex min-w-0 justify-center transition-[right] duration-300 ease-in-out sm:bottom-4 sm:left-60',
+      )}
+    >
       <div
         className={cn(editorCapsuleClassName, 'relative w-112 max-w-full')}
         onPointerDown={(event) => event.stopPropagation()}

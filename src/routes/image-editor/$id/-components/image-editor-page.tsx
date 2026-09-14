@@ -242,6 +242,7 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
   const [activeInspectorTab, setActiveInspectorTab] = useState<
     'layers' | 'properties'
   >('layers')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const { error, handleFileChange, inputRef, isImporting, openFileDialog } =
     useImageImport(editor)
   const imageGeneration = useImageGeneration(editor)
@@ -300,7 +301,14 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
     <ImageGenerationContext value={imageGeneration}>
       <LayerDecompositionProvider value={layerDecompositionContext}>
         <ImageEditorInspectorProvider value={inspectorContext}>
-          <section className="relative h-full min-h-0 overflow-hidden bg-background">
+          <section
+            className={cn(
+              'relative h-full min-h-0 overflow-hidden bg-background',
+              sidebarCollapsed
+                ? '[--inspector-width:2.875rem]'
+                : '[--inspector-width:20rem]',
+            )}
+          >
             <input
               accept="image/png,image/jpeg,image/webp"
               className="sr-only"
@@ -310,7 +318,11 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
               type="file"
             />
 
-            <div className="pointer-events-none absolute top-8 right-2 left-2 z-20 flex min-w-0 items-center gap-2 sm:right-4 sm:left-4 sm:gap-3 xl:right-88">
+            <div
+              className={cn(
+                'pointer-events-none absolute top-8 left-2 right-[calc(var(--inspector-width)+2rem)] z-30 flex min-w-0 items-center gap-2 transition-[right] duration-300 ease-in-out sm:left-4 sm:gap-3',
+              )}
+            >
               <header className="pointer-events-auto flex min-w-0 items-center rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/5 backdrop-blur-xl">
                 <ImageEditorPageMenu editor={editor} />
               </header>
@@ -403,7 +415,11 @@ export function ImageEditorPage({ projectId }: { projectId: string }) {
               />
             </main>
 
-            <ImageEditorLayers editor={editor} />
+            <ImageEditorLayers
+              editor={editor}
+              collapsed={sidebarCollapsed}
+              onCollapsedChange={setSidebarCollapsed}
+            />
             <ImageEditorZoomControls editor={editor} />
             <ImageEditorDock
               editor={editor}

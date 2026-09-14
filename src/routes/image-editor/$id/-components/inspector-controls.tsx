@@ -108,6 +108,7 @@ export function InspectorNumber({
         aria-label={label}
         disabled={disabled}
         type="number"
+        className="[appearance:textfield] [-webkit-appearance:none] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-inner-spin-button]:[-webkit-appearance:none] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-outer-spin-button]:[-webkit-appearance:none]"
         step={step}
         min={min}
         max={max}

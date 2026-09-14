@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   DragDropVerticalIcon,
   ArrowRightToLineIcon,
-  ArrowLeftFromLineIcon,
   EyeIcon,
   EyeOffIcon,
   ImageAdd01Icon,
@@ -39,6 +38,8 @@ import { useImageEditorInspector } from '../-context/image-editor-inspector-stat
 
 interface ImageEditorLayersProps {
   editor: Editor | null
+  collapsed: boolean
+  onCollapsedChange: (collapsed: boolean) => void
 }
 
 interface LayerItem {
@@ -376,113 +377,129 @@ function LayerDecompositionAction({ editor }: { editor: Editor }) {
   )
 }
 
-export function ImageEditorLayers({ editor }: ImageEditorLayersProps) {
+export function ImageEditorLayers({
+  editor,
+  collapsed,
+  onCollapsedChange,
+}: ImageEditorLayersProps) {
   const { activeTab, setActiveTab } = useImageEditorInspector()
-  const [collapsedTab, setCollapsedTab] = useState<string | null>(null)
-
-  if (collapsedTab === activeTab) {
-    return (
+  return (
+    <div
+      className={cn(
+        'pointer-events-none absolute top-8 right-4 z-20 flex min-h-0 min-w-0 flex-col overflow-hidden transition-[width,height] duration-300 ease-in-out',
+        collapsed
+          ? 'size-11.5 rounded-2xl border border-border bg-card/95 p-1 shadow-xl shadow-foreground/10 backdrop-blur-xl'
+          : 'h-[calc(100%_-_3rem)] w-80',
+      )}
+    >
       <Button
-        className="absolute top-8 right-4 z-20 hidden xl:inline-flex"
-        aria-label="展开属性与图层面板"
-        onClick={() => setCollapsedTab(null)}
+        className={cn(
+          'pointer-events-auto absolute z-10 size-9 rounded-full p-0 transition-[top,right,background-color] duration-300 ease-out',
+          collapsed
+            ? 'top-1 right-1'
+            : 'top-2 right-2 border-0 bg-transparent shadow-none hover:bg-muted',
+        )}
+        aria-label={collapsed ? '展开属性与图层面板' : '收起属性与图层面板'}
+        onClick={() => onCollapsedChange(!collapsed)}
         variant="secondary"
         size="icon"
       >
-        <HugeiconsIcon icon={ArrowLeftFromLineIcon} />
+        <HugeiconsIcon
+          className={cn(
+            'transition-transform duration-300 ease-out',
+            collapsed && 'rotate-180',
+          )}
+          icon={ArrowRightToLineIcon}
+        />
       </Button>
-    )
-  }
-
-  return (
-    <aside className="absolute top-8 right-4 bottom-4 z-20 hidden w-80 min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-foreground/5 xl:flex">
-      <Tabs
-        className="min-h-0 flex-1 gap-0"
-        onValueChange={(value) =>
-          setActiveTab(value as 'layers' | 'properties')
-        }
-        value={activeTab}
-      >
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-          <TabsList className="grid flex-1 grid-cols-2 rounded-xl">
-            <TabsTrigger value="layers">
-              <HugeiconsIcon data-icon="inline-start" icon={Layers01Icon} />
-              图层
-            </TabsTrigger>
-            <TabsTrigger value="properties">
-              <HugeiconsIcon
-                data-icon="inline-start"
-                icon={SlidersHorizontalIcon}
-              />
-              属性
-            </TabsTrigger>
-          </TabsList>
-          <Button
-            aria-label="收起属性与图层面板"
-            size="icon-sm"
-            variant="ghost"
-            onClick={() => setCollapsedTab(activeTab)}
-          >
-            <HugeiconsIcon icon={ArrowRightToLineIcon} />
-          </Button>
-        </div>
-
-        <TabsContent
-          className="flex min-h-0 flex-1 flex-col overflow-hidden"
-          value="layers"
+      <div className="h-full w-80 shrink-0">
+        <aside
+          className={cn(
+            'pointer-events-auto flex h-full w-80 min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-foreground/5',
+            collapsed && 'invisible pointer-events-none',
+          )}
         >
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <HugeiconsIcon icon={Layers01Icon} />
+          <Tabs
+            className="min-h-0 flex-1 gap-0"
+            onValueChange={(value) =>
+              setActiveTab(value as 'layers' | 'properties')
+            }
+            value={activeTab}
+          >
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3 pr-16">
+              <TabsList className="grid flex-1 grid-cols-2 rounded-xl">
+                <TabsTrigger value="layers">
+                  <HugeiconsIcon data-icon="inline-start" icon={Layers01Icon} />
                   图层
+                </TabsTrigger>
+                <TabsTrigger value="properties">
+                  <HugeiconsIcon
+                    data-icon="inline-start"
+                    icon={SlidersHorizontalIcon}
+                  />
+                  属性
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent
+              className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              value="layers"
+            >
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <HugeiconsIcon icon={Layers01Icon} />
+                      图层
+                    </div>
+                    {editor ? (
+                      <LayerCount editor={editor} />
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        画布加载中
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {editor ? (
-                  <LayerCount editor={editor} />
+                  <ConnectedLayers editor={editor} />
                 ) : (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    画布加载中
-                  </p>
+                  <div className="px-4 py-6 text-sm text-muted-foreground">
+                    正在准备图层…
+                  </div>
                 )}
               </div>
-            </div>
-            {editor ? (
-              <ConnectedLayers editor={editor} />
-            ) : (
-              <div className="px-4 py-6 text-sm text-muted-foreground">
-                正在准备图层…
+
+              <div className="border-t border-border bg-primary/10 p-4">
+                <p className="text-sm font-medium">AI 助手</p>
+                <div className="mt-3">
+                  {editor ? (
+                    <LayerDecompositionAction editor={editor} />
+                  ) : (
+                    <Button className="w-full rounded-xl" disabled size="sm">
+                      分离当前图层
+                    </Button>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            </TabsContent>
 
-          <div className="border-t border-border bg-primary/10 p-4">
-            <p className="text-sm font-medium">AI 助手</p>
-            <div className="mt-3">
+            <TabsContent
+              className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              value="properties"
+            >
               {editor ? (
-                <LayerDecompositionAction editor={editor} />
+                <ImageEditorProperties editor={editor} />
               ) : (
-                <Button className="w-full rounded-xl" disabled size="sm">
-                  分离当前图层
-                </Button>
+                <div className="px-4 py-6 text-sm text-muted-foreground">
+                  正在准备属性…
+                </div>
               )}
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent
-          className="flex min-h-0 flex-1 flex-col overflow-hidden"
-          value="properties"
-        >
-          {editor ? (
-            <ImageEditorProperties editor={editor} />
-          ) : (
-            <div className="px-4 py-6 text-sm text-muted-foreground">
-              正在准备属性…
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </aside>
+            </TabsContent>
+          </Tabs>
+        </aside>
+      </div>
+    </div>
   )
 }
