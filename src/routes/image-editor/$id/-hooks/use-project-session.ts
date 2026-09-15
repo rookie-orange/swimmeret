@@ -26,6 +26,12 @@ interface LoadedProject {
   assets: ProjectAssetStore
 }
 
+function isPersistedRecord(record: { typeName: string }) {
+  return (
+    record.typeName !== 'pointer' && record.typeName !== 'instance_presence'
+  )
+}
+
 export function useProjectSession(
   projectId: string,
   busyRef: { current: boolean },
@@ -176,18 +182,13 @@ export function useProjectSession(
       autosave.current = saver
       const unlisten = mounted.store.listen(
         (entry) => {
-          const changed = [
-            ...Object.values(entry.changes.added),
-            ...Object.values(entry.changes.removed),
-            ...Object.values(entry.changes.updated).map(([, record]) => record),
-          ]
-          if (
-            changed.some(
-              (record) =>
-                record.typeName !== 'pointer' &&
-                record.typeName !== 'instance_presence',
+          const hasPersistedChange =
+            Object.values(entry.changes.added).some(isPersistedRecord) ||
+            Object.values(entry.changes.removed).some(isPersistedRecord) ||
+            Object.values(entry.changes.updated).some(([, record]) =>
+              isPersistedRecord(record),
             )
-          ) {
+          if (hasPersistedChange) {
             previewDirty.current = true
             previewVersion.current += 1
             saver.schedule()

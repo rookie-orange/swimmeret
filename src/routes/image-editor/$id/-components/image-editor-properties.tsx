@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { memo, useId } from 'react'
 import { CursorPointer01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -170,6 +170,63 @@ const splineOptions = [
 
 type InspectorStyleValue<T> = T | 'mixed' | null
 
+const InspectorOpacity = memo(function InspectorOpacity({
+  editor,
+  disabled,
+}: {
+  editor: Editor
+  disabled: boolean
+}) {
+  const opacity = useValue(
+    'image editor inspector opacity',
+    () => {
+      const value = editor.getSharedOpacity()
+      return value.type === 'mixed' ? ('mixed' as const) : value.value
+    },
+    [editor],
+  )
+
+  const setOpacity = (value: number) => {
+    if (disabled) return
+    editor.markHistoryStoppingPoint('change inspector opacity')
+    editor.setOpacityForSelectedShapes(value / 100)
+  }
+
+  return (
+    <InspectorSection>
+      <div className="flex items-center gap-3">
+        <FieldLabel className="w-20 shrink-0">不透明度</FieldLabel>
+        <Slider
+          aria-label="不透明度"
+          disabled={disabled}
+          min={0}
+          max={100}
+          step={1}
+          value={opacity === 'mixed' ? 100 : opacity * 100}
+          onPointerDown={() =>
+            editor.markHistoryStoppingPoint('change inspector opacity')
+          }
+          onKeyDown={() =>
+            editor.markHistoryStoppingPoint('change inspector opacity')
+          }
+          onValueChange={(value) => setOpacity(value)}
+        />
+        <div className="w-20 shrink-0">
+          <InspectorNumber
+            label="不透明度数值"
+            suffix="%"
+            value={opacity === 'mixed' ? null : opacity * 100}
+            min={0}
+            max={100}
+            disabled={disabled}
+            onCommit={setOpacity}
+          />
+        </div>
+      </div>
+    </InspectorSection>
+  )
+})
+
 function getInspectorStyle<T>(
   styles: ReadonlySharedStyleMap,
   style: StyleProp<T>,
@@ -270,8 +327,6 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
       const shapes = editor.getSelectedShapes()
       const styles = editor.getSharedStyles()
       const onlyShape = shapes.length === 1 ? shapes[0] : null
-      const opacity = editor.getSharedOpacity()
-
       return {
         count: shapes.length,
         hasFillColor: shapes.some((shape) => supportsShapeColor(shape, 'fill')),
@@ -323,7 +378,6 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
         ),
         arrowheadEnd: getInspectorStyle(styles, ArrowShapeArrowheadEndStyle),
         spline: getInspectorStyle(styles, LineShapeSplineStyle),
-        opacity: opacity.type === 'mixed' ? ('mixed' as const) : opacity.value,
       }
     },
     [editor],
@@ -612,52 +666,11 @@ export function ImageEditorProperties({ editor }: ImageEditorPropertiesProps) {
               </div>
             </InspectorSection>
           ) : null}
-          <InspectorSection>
-            <div className="flex items-center gap-3">
-              <FieldLabel className="w-20 shrink-0">不透明度</FieldLabel>
-              <Slider
-                aria-label="不透明度"
-                disabled={disabled}
-                min={0}
-                max={100}
-                step={1}
-                value={
-                  selection.opacity === 'mixed' ? 100 : selection.opacity * 100
-                }
-                onPointerDown={() =>
-                  editor.markHistoryStoppingPoint('change inspector opacity')
-                }
-                onKeyDown={() =>
-                  editor.markHistoryStoppingPoint('change inspector opacity')
-                }
-                onValueChange={(value) =>
-                  editor.setOpacityForSelectedShapes(value / 100)
-                }
-              />
-              <div className="w-20 shrink-0">
-                <InspectorNumber
-                  label="不透明度数值"
-                  suffix="%"
-                  value={
-                    selection.opacity === 'mixed'
-                      ? null
-                      : selection.opacity * 100
-                  }
-                  min={0}
-                  max={100}
-                  disabled={disabled}
-                  onCommit={(value) => {
-                    editor.markHistoryStoppingPoint('change inspector opacity')
-                    editor.setOpacityForSelectedShapes(value / 100)
-                  }}
-                />
-              </div>
-            </div>
-          </InspectorSection>
+          <InspectorOpacity editor={editor} disabled={disabled} />
           <InspectorTransform
             editor={editor}
             disabled={disabled}
-            key={selection.ids}
+            key={`transform-${selection.ids}`}
           />
           {selection.imageShape ? (
             <InspectorImageDescription

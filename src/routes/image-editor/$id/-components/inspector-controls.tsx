@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode, type ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { clamp } from 'es-toolkit'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -94,7 +95,7 @@ export function InspectorNumber({
     if (draft !== null && draft.trim() !== '') {
       const parsed = Number(draft)
       if (Number.isFinite(parsed) && parsed !== value)
-        onCommit(Math.min(max ?? Infinity, Math.max(min ?? -Infinity, parsed)))
+        onCommit(clamp(parsed, min ?? -Infinity, max ?? Infinity))
     }
     setDraft(null)
   }

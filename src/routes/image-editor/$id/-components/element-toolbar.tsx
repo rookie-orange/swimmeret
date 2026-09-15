@@ -15,6 +15,7 @@ import {
   UngroupLayersIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { clamp } from 'es-toolkit'
 import { useActions, useEditor, useValue, type TLImageShape } from 'tldraw'
 
 import { Button } from '@/components/ui/button'
@@ -208,28 +209,25 @@ export function ElementToolbar() {
 
       const shape = editor.getShape(selectedIds[0])
       if (!shape) return null
+      const selectedShapes = editor.getSelectedShapes()
 
       const isImageGeneration =
         selectedIds.length === 1 && !!getImageGenerationDraft(shape)
 
       const isImage = selectedIds.length === 1 && shape.type === 'image'
-      const isGeo = editor
-        .getSelectedShapes()
-        .every((selected) => selected.type === 'geo')
-      const isStroke = editor
-        .getSelectedShapes()
-        .every((selected) =>
-          ['draw', 'line', 'arrow', 'highlight'].includes(selected.type),
-        )
-      const isText = editor
-        .getSelectedShapes()
-        .every((selected) => selected.type === 'text')
+      const isGeo = selectedShapes.every((selected) => selected.type === 'geo')
+      const isStroke = selectedShapes.every((selected) =>
+        ['draw', 'line', 'arrow', 'highlight'].includes(selected.type),
+      )
+      const isText = selectedShapes.every(
+        (selected) => selected.type === 'text',
+      )
       const isWide = isImage || isGeo || isStroke || isText
       const canEdit =
         !editor.getInstanceState().isReadonly &&
-        editor
-          .getSelectedShapes()
-          .some((selected) => !editor.isShapeOrAncestorLocked(selected))
+        selectedShapes.some(
+          (selected) => !editor.isShapeOrAncestorLocked(selected),
+        )
       const toolbarWidth = isImageGeneration
         ? GENERATION_TOOLBAR_WIDTH
         : isWide
@@ -267,14 +265,12 @@ export function ElementToolbar() {
         isText,
         isWide,
         canEdit,
-        x: Math.min(
-          Math.max(
-            bounds.center.x - viewport.minX - toolbarWidth / 2,
-            VIEWPORT_MARGIN,
-          ),
+        x: clamp(
+          bounds.center.x - viewport.minX - toolbarWidth / 2,
+          VIEWPORT_MARGIN,
           maxLeft,
         ),
-        y: Math.min(Math.max(unclampedTop, VIEWPORT_MARGIN), maxTop),
+        y: clamp(unclampedTop, VIEWPORT_MARGIN, maxTop),
       }
     },
     [editor],

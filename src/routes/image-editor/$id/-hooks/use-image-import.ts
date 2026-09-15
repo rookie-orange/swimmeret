@@ -5,6 +5,7 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
+import { clamp } from 'es-toolkit'
 import {
   createShapeId,
   type Editor,
@@ -57,10 +58,8 @@ export function useImageImport(editor: Editor | null) {
             if (asset.type !== 'image') continue
             const scale = Math.min(
               1,
-              Math.max(160, Math.min(720, viewport.width * 0.55)) /
-                asset.props.w,
-              Math.max(120, Math.min(540, viewport.height * 0.55)) /
-                asset.props.h,
+              clamp(viewport.width * 0.55, 160, 720) / asset.props.w,
+              clamp(viewport.height * 0.55, 120, 540) / asset.props.h,
             )
             const w = asset.props.w * scale
             const h = asset.props.h * scale

@@ -227,10 +227,14 @@ const Grainient: React.FC<GrainientProps> = ({
     const mesh = new Mesh(gl, { geometry, program })
     ctxMap.set(container, { renderer, program, mesh })
 
-    const setSize = () => {
-      const rect = container.getBoundingClientRect()
-      const w = Math.max(1, Math.floor(rect.width))
-      const h = Math.max(1, Math.floor(rect.height))
+    const setSize = (entry?: ResizeObserverEntry) => {
+      // tldraw scales shape HTML with a CSS transform. `getBoundingClientRect`
+      // returns that transformed (screen) size, which would make OGL assign a
+      // too-small inline canvas size and leave an uncovered strip in the shape.
+      // ResizeObserver's content rect is in the element's own layout space.
+      const rect = entry?.contentRect
+      const w = Math.max(1, Math.floor(rect?.width ?? container.clientWidth))
+      const h = Math.max(1, Math.floor(rect?.height ?? container.clientHeight))
       renderer.setSize(w, h)
       const res = (program.uniforms.iResolution as { value: Float32Array })
         .value
@@ -239,7 +243,7 @@ const Grainient: React.FC<GrainientProps> = ({
       renderer.render({ scene: mesh })
     }
 
-    const ro = new ResizeObserver(setSize)
+    const ro = new ResizeObserver(([entry]) => setSize(entry))
     ro.observe(container)
     setSize()
 

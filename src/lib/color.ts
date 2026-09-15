@@ -1,7 +1,6 @@
-export type HsvColor = [hue: number, saturation: number, value: number]
+import { clamp } from 'es-toolkit'
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value))
+export type HsvColor = [hue: number, saturation: number, value: number]
 
 export function hsvToHex([h, s, v]: HsvColor): string {
   const saturation = clamp(s, 0, 100) / 100

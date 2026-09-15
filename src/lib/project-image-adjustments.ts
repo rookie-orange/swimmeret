@@ -1,3 +1,4 @@
+import { clamp } from 'es-toolkit'
 import type { TLImageShape } from 'tldraw'
 
 export interface ImageAdjustments {
@@ -63,7 +64,7 @@ const adjustmentClasses = {
 
 function getAdjustmentValue(value: unknown, minimum = -2) {
   return typeof value === 'number' && Number.isFinite(value)
-    ? Math.max(minimum, Math.min(2, value))
+    ? clamp(value, minimum, 2)
     : minimum > 0
       ? minimum
       : 0

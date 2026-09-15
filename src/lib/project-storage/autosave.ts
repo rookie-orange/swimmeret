@@ -28,7 +28,9 @@ export class ProjectAutosave {
   }
 
   schedule() {
-    if (this.disposed || !this.hasChanges()) return
+    if (this.disposed) return
+    // The store listener already filters transient records. Defer the snapshot
+    // comparison until the coalesced flush instead of serializing per change.
     this.onStatus('pending')
     // Keep one timer so continuous edits still reach disk regularly.
     this.timer ??= setTimeout(() => {

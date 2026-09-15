@@ -1,3 +1,4 @@
+import { clamp } from 'es-toolkit'
 import type { LayerManifestAsset } from '@/api/layer-decomposition'
 
 const MIN_INPUT_PIXELS = 512 * 512
@@ -30,7 +31,7 @@ export function calculateLayerExportScale(
     throw new Error('当前图片的宽高比不符合图层分离要求')
   }
 
-  return Math.max(minScale, Math.min(Math.max(1, naturalScale), maxScale))
+  return clamp(Math.max(1, naturalScale), minScale, maxScale)
 }
 
 export function getLayerCanvasPlacement(
