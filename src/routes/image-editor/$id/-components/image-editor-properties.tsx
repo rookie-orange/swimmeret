@@ -207,7 +207,7 @@ function PropertySelect({
   value: string | 'mixed' | null
 }) {
   const id = useId()
-  const useRadio = options.length <= 4
+  const useRadio = options.length <= 4 && label !== '线型'
 
   return (
     <Field orientation="horizontal" className="items-center gap-3">
